@@ -40,6 +40,12 @@ class RolePermissionSeeder extends Seeder
             'edit sales',
             'delete sales',
             'view sales reports',
+
+            // Category Management
+            'view categories',
+            'create categories',
+            'edit categories',
+            'delete categories',
             
             // Product Management
             'view products',
@@ -59,6 +65,12 @@ class RolePermissionSeeder extends Seeder
             'create branches',
             'edit branches',
             'delete branches',
+
+            // Warehouse Management
+            'view warehouses',
+            'create warehouses',
+            'edit warehouses',
+            'delete warehouses',
             
             // Financial Management
             'view expenses',
@@ -87,15 +99,15 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         // Create roles
-        $superAdminRole = Role::create(['name' => 'super-admin', 'guard_name' => 'web']);
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $managerRole = Role::create(['name' => 'manager', 'guard_name' => 'web']);
-        $cashierRole = Role::create(['name' => 'cashier', 'guard_name' => 'web']);
-        $employeeRole = Role::create(['name' => 'employee', 'guard_name' => 'web']);
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $managerRole = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $cashierRole = Role::firstOrCreate(['name' => 'cashier', 'guard_name' => 'web']);
+        $employeeRole = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
 
         // Assign permissions to roles
         $superAdminRole->givePermissionTo(Permission::all());
@@ -108,6 +120,7 @@ class RolePermissionSeeder extends Seeder
             'view products', 'create products', 'edit products', 'delete products', 'manage inventory',
             'view clients', 'create clients', 'edit clients', 'delete clients',
             'view branches', 'create branches', 'edit branches', 'delete branches',
+            'view warehouses', 'create warehouses', 'edit warehouses', 'delete warehouses',
             'view expenses', 'create expenses', 'edit expenses', 'delete expenses',
             'view revenues', 'create revenues', 'edit revenues', 'delete revenues',
             'view profit reports',
@@ -144,12 +157,17 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Create super admin user
-        $superAdmin = User::create([
-            'name' => 'Super Admin',
-            'email' => 'superadmin@gmail.com',
-            'password' => Hash::make('11111111'),
-        ]);
+        $superAdmin = User::firstOrCreate(
+            ['email' => 'superadmin@gmail.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('11111111'),
+            ]
+        );
 
-        $superAdmin->assignRole('super-admin');
+        // Assign role if not already assigned
+        if (!$superAdmin->hasRole('super-admin')) {
+            $superAdmin->assignRole('super-admin');
+        }
     }
 }
