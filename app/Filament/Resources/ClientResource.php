@@ -216,26 +216,26 @@ class ClientResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin', 'manager', 'cashier']);
+        return auth()->user()->can('create clients');
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin', 'manager', 'cashier']);
+        return auth()->user()->can('edit clients');
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin']);
+        return auth()->user()->can('delete clients') && !$record->sales()->exists();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin', 'manager', 'cashier', 'employee']);
+        return auth()->user()->can('view clients');
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin', 'manager', 'cashier', 'employee']);
+        return auth()->user()->can('view clients');
     }
 }
