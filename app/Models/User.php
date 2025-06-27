@@ -65,4 +65,29 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(InventoryAdjustment::class);
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function isBranchUser()
+    {
+        return $this->branch_id !== null && $this->hasRole('branch-user');
+    }
+
+    public function isBranchManager()
+    {
+        return $this->branch_id !== null && $this->hasRole('branch-manager');
+    }
+
+    public function isAdmin()
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function isSuperAdmin()
+    {
+        return $this->hasRole('super-admin');
+    }
 }

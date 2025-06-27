@@ -49,4 +49,48 @@ class PurchaseInvoice extends Model
     {
         return $this->hasMany(ProviderPayment::class);
     }
+
+    /**
+     * Get total paid amount for this invoice
+     */
+    public function getTotalPaidAttribute()
+    {
+        return $this->payments()->sum('amount');
+    }
+
+    /**
+     * Get current balance for this invoice
+     */
+    public function getBalanceAttribute()
+    {
+        return $this->total_amount - $this->total_paid;
+    }
+
+    /**
+     * Check if invoice is fully paid
+     */
+    public function isFullyPaid()
+    {
+        return $this->balance <= 0;
+    }
+
+    /**
+     * Check if invoice has outstanding balance
+     */
+    public function hasOutstandingBalance()
+    {
+        return $this->balance > 0;
+    }
+
+    /**
+     * Get payment percentage
+     */
+    public function getPaymentPercentageAttribute()
+    {
+        if ($this->total_amount == 0) {
+            return 100;
+        }
+        
+        return min(100, ($this->total_paid / $this->total_amount) * 100);
+    }
 }

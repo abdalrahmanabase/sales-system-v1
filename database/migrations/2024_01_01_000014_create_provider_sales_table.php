@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('provider_sales', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('provider_id')->constrained()->onDelete('cascade');
             $table->string('name');
             $table->string('phone');
             $table->string('phone2')->nullable();

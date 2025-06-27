@@ -14,11 +14,13 @@ class PurchaseInvoiceItem extends Model
         'product_id',
         'quantity',
         'purchase_price',
+        'sell_price',
         'is_bonus',
     ];
 
     protected $casts = [
         'purchase_price' => 'decimal:2',
+        'sell_price' => 'decimal:2',
         'is_bonus' => 'boolean',
     ];
 
@@ -30,5 +32,29 @@ class PurchaseInvoiceItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the actual cost for this item (0 if bonus, otherwise purchase_price)
+     */
+    public function getActualCostAttribute()
+    {
+        return $this->is_bonus ? 0 : $this->purchase_price;
+    }
+
+    /**
+     * Get the total cost for this item (quantity * actual cost)
+     */
+    public function getTotalCostAttribute()
+    {
+        return $this->quantity * $this->actual_cost;
+    }
+
+    /**
+     * Get the total purchase value (quantity * purchase_price, regardless of bonus status)
+     */
+    public function getTotalPurchaseValueAttribute()
+    {
+        return $this->quantity * $this->purchase_price;
     }
 }

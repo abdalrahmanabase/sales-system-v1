@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Collection;
+use App\Helpers\PermissionHelper;
 
 class UserResource extends Resource
 {
@@ -42,6 +43,12 @@ class UserResource extends Resource
                         ->dehydrateStateUsing(fn ($state) => Hash::make($state))
                         ->dehydrated(fn ($state) => filled($state))
                         ->required(fn (string $context): bool => $context === 'create'),
+                    Forms\Components\Select::make('branch_id')
+                        ->label('Branch')
+                        ->relationship('branch', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->visible(fn ($get) => !in_array('super-admin', $get('roles') ?? []) && !in_array('admin', $get('roles') ?? [])),
                 ])->columns(2),
 
             Forms\Components\Section::make('Roles & Permissions')
@@ -50,12 +57,35 @@ class UserResource extends Resource
                         ->multiple()
                         ->relationship('roles', 'name')
                         ->preload()
-                        ->searchable(),
-                    Forms\Components\Select::make('permissions')
-                        ->multiple()
-                        ->relationship('permissions', 'name')
-                        ->preload()
-                        ->searchable(),
+                        ->searchable()
+                        ->options(function () {
+                            $roles = \Spatie\Permission\Models\Role::query();
+                            if (!auth()->user()->hasRole('super-admin')) {
+                                $roles->whereNotIn('name', ['super-admin', 'admin']);
+                            }
+                            return $roles->pluck('name', 'id');
+                        }),
+                    // Forms\Components\Select::make('permissions')
+                    //     ->multiple()
+                    //     ->relationship('permissions', 'name')
+                    //     ->preload()
+                    //     ->searchable()
+                    //     ->options(function () {
+                    //         if (auth()->user()->hasRole('super-admin')) {
+                    //             return \Spatie\Permission\Models\Permission::pluck('name', 'id');
+                    //         }
+                    //         $permissions = \Spatie\Permission\Models\Permission::query();
+                    //         $permissions->whereNotIn('name', \App\Helpers\PermissionHelper::getSuperAdminOnlyPermissions());
+                    //         return $permissions->pluck('name', 'id');
+                    //     })
+                    //     ->getSearchResultsUsing(function (string $search) {
+                    //         $query = \Spatie\Permission\Models\Permission::query();
+                    //         if (!auth()->user()->hasRole('super-admin')) {
+                    //             $query->whereNotIn('name', \App\Helpers\PermissionHelper::getSuperAdminOnlyPermissions());
+                    //         }
+                    //         return $query->where('name', 'like', "%{$search}%")->pluck('name', 'id');
+                    //     })
+                    //     ->getOptionLabelUsing(fn ($value): ?string => \Spatie\Permission\Models\Permission::find($value)?->name),
                 ])->columns(2),
         ]);
     }
@@ -70,27 +100,34 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('branch.name')
+                    ->label('Branch')
+                    ->badge()
+                    ->color('info')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
                     ->color('success')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                // Tables\Columns\TextColumn::make('created_at')
+                //     ->dateTime()
+                //     ->sortable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
+                // Tables\Columns\TextColumn::make('updated_at')
+                //     ->dateTime()
+                //     ->sortable()
+                //     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('roles')
                     ->relationship('roles', 'name')
                     ->multiple()
                     ->preload(),
+                Tables\Filters\SelectFilter::make('branch_id')
+                    ->relationship('branch', 'name')
+                    ->preload(),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
                     Tables\Actions\EditAction::make(),
                     
                     Tables\Actions\Action::make('impersonate')
@@ -101,14 +138,21 @@ class UserResource extends Resource
                         })
                         ->requiresConfirmation()
                         ->visible(fn () => auth()->user()->hasRole('super-admin')),
-                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(function (Builder $query) {
+                if (!auth()->user()->hasRole('super-admin')) {
+                    $query->whereDoesntHave('roles', function ($q) {
+                        $q->whereIn('name', ['super-admin', 'admin']);
+                    });
+                    $query->where('id', '!=', auth()->id()); // Admin cannot see/edit their own user record
+                }
+            });
     }
 
     public static function getRelations(): array
@@ -137,12 +181,32 @@ class UserResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->id === $record->id;
+        // Super-admin can edit all users including admin
+        if (auth()->user()->hasRole('super-admin')) {
+            return true;
+        }
+        
+        // Admin can only edit non-admin and non-super-admin users
+        if (auth()->user()->hasRole('admin')) {
+            return !$record->hasRole('super-admin') && !$record->hasRole('admin');
+        }
+        
+        return false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin']) && auth()->user()->id !== $record->id;
+        // Super-admin can delete all users except themselves
+        if (auth()->user()->hasRole('super-admin')) {
+            return $record->id !== auth()->id();
+        }
+        
+        // Admin can only delete non-admin and non-super-admin users
+        if (auth()->user()->hasRole('admin')) {
+            return !$record->hasRole('super-admin') && !$record->hasRole('admin');
+        }
+        
+        return false;
     }
 
     public static function canViewAny(): bool

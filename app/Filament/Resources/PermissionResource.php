@@ -80,7 +80,27 @@ class PermissionResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(function (Builder $query) {
+                // Super-admin can see all permissions
+                if (auth()->user()->hasRole('super-admin')) {
+                    return $query;
+                }
+                
+                // Admin can only see non-super-admin permissions
+                if (auth()->user()->hasRole('admin')) {
+                    $superAdminOnlyPermissions = [
+                        'manage permissions',
+                        'delete permissions',
+                        'manage system settings',
+                        'manage backups',
+                        'delete roles',
+                    ];
+                    $query->whereNotIn('name', $superAdminOnlyPermissions);
+                }
+                
+                return $query;
+            });
     }
 
     public static function getRelations(): array

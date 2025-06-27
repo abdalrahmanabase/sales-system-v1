@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Spatie\Permission\Models\Permission;
+use App\Helpers\PermissionHelper;
 
 class RoleResource extends Resource
 {
@@ -47,7 +48,23 @@ class RoleResource extends Resource
                             ->multiple()
                             ->relationship('permissions', 'name')
                             ->preload()
-                            ->searchable(),
+                            ->searchable()
+                            ->options(function () {
+                                if (auth()->user()->hasRole('super-admin')) {
+                                    return \Spatie\Permission\Models\Permission::pluck('name', 'id');
+                                }
+                                $permissions = \Spatie\Permission\Models\Permission::query();
+                                $permissions->whereNotIn('name', \App\Helpers\PermissionHelper::getSuperAdminOnlyPermissions());
+                                return $permissions->pluck('name', 'id');
+                            })
+                            ->getSearchResultsUsing(function (string $search) {
+                                $query = \Spatie\Permission\Models\Permission::query();
+                                if (!auth()->user()->hasRole('super-admin')) {
+                                    $query->whereNotIn('name', \App\Helpers\PermissionHelper::getSuperAdminOnlyPermissions());
+                                }
+                                return $query->where('name', 'like', "%{$search}%")->pluck('name', 'id');
+                            })
+                            ->getOptionLabelUsing(fn ($value): ?string => \Spatie\Permission\Models\Permission::find($value)?->name),
                     ]),
             ]);
     }
@@ -89,7 +106,12 @@ class RoleResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(function (Builder $query) {
+                if (!auth()->user()->hasRole('super-admin')) {
+                    $query->where('name', '!=', 'super-admin');
+                }
+            });
     }
 
     public static function getRelations(): array
@@ -115,13 +137,32 @@ class RoleResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin']);
+        // Super-admin can edit all roles
+        if (auth()->user()->hasRole('super-admin')) {
+            return true;
+        }
+        
+        // Admin can only edit non-super-admin and non-admin roles
+        if (auth()->user()->hasRole('admin')) {
+            return !in_array($record->name, ['super-admin', 'admin']);
+        }
+        
+        return false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()->hasRole(['super-admin', 'admin']) && 
-               !in_array($record->name, ['super-admin', 'admin']);
+        // Super-admin can delete all roles except super-admin
+        if (auth()->user()->hasRole('super-admin')) {
+            return $record->name !== 'super-admin';
+        }
+        
+        // Admin can only delete non-super-admin and non-admin roles
+        if (auth()->user()->hasRole('admin')) {
+            return !in_array($record->name, ['super-admin', 'admin']);
+        }
+        
+        return false;
     }
 
     public static function canViewAny(): bool

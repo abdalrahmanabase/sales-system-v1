@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('product_id')->nullable()->constrained()->onDelete('set null');
             $table->integer('quantity');
             $table->decimal('purchase_price', 10, 2);
+            $table->decimal('sell_price', 10, 2)->nullable();
             $table->boolean('is_bonus')->default(false);
             $table->timestamps();
         });
