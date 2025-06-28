@@ -13,6 +13,11 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->string('name')->nullable();
             $table->string('abbreviation')->nullable();
+            $table->decimal('conversion_factor', 10, 4)->default(1);
+            $table->decimal('sell_price', 10, 2)->default(0);
+            $table->decimal('purchase_price', 10, 2)->default(0);
+            $table->boolean('is_base_unit')->default(false);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }

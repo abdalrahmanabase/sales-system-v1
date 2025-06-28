@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\FormatHelper;
 
 class WarehouseResource extends Resource
 {
@@ -74,7 +75,7 @@ class WarehouseResource extends Resource
                             ->join('products', 'product_stocks.product_id', '=', 'products.id')
                             ->sum(DB::raw('product_stocks.quantity * products.sell_price_per_unit'));
                     })
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('low_stock_products')
                     ->label('Low Stock Products')
@@ -87,7 +88,7 @@ class WarehouseResource extends Resource
                     ->color('danger')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

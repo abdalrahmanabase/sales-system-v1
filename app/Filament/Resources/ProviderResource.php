@@ -10,6 +10,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\ProviderPayment;
 use App\Models\Branch;
 use App\Models\Warehouse;
+use App\Helpers\FormatHelper;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -40,22 +41,20 @@ class ProviderResource extends Resource
                             ->preload()
                             ->required()
                             ->label('Company')
-                        ->placeholder('Select a company')
-                        ->createOptionForm([
-                            Forms\Components\TextInput::make('name')
-                                ->required()
-                                ->maxLength(255)
-                                ->label('Company Name')
-                                ->placeholder('e.g., ABC Corporation, XYZ Ltd.'),
-                        ])
-                        ->createOptionAction(
-                            fn ($action) => $action
-                                ->modalHeading('Create New Company')
-                                ->modalDescription('Add a new company name to the system.')
-                                ->modalSubmitActionLabel('Create Company')
-                        ),
-                        
-                    
+                            ->placeholder('Select a company')
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->label('Company Name')
+                                    ->placeholder('e.g., ABC Corporation, XYZ Ltd.'),
+                            ])
+                            ->createOptionAction(
+                                fn ($action) => $action
+                                    ->modalHeading('Create New Company')
+                                    ->modalDescription('Add a new company name to the system.')
+                                    ->modalSubmitActionLabel('Create Company')
+                            ),
                         Forms\Components\TextInput::make('name')
                             ->maxLength(255)
                             ->label('Provider Name')
@@ -99,14 +98,14 @@ class ProviderResource extends Resource
                     ->getStateUsing(function (Provider $record) {
                         return $record->purchaseInvoices()->sum('total_amount');
                     })
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_payments')
                     ->label('Total Payments')
                     ->getStateUsing(function (Provider $record) {
                         return $record->payments()->sum('amount');
                     })
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('balance')
                     ->label('Balance')
@@ -115,11 +114,11 @@ class ProviderResource extends Resource
                         $totalPayments = $record->payments()->sum('amount');
                         return $totalPurchases - $totalPayments;
                     })
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->color(fn($state) => $state > 0 ? 'danger' : 'success')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDate($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

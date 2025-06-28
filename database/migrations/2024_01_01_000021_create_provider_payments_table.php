@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('purchase_invoice_id')->nullable()->constrained()->onDelete('set null');
             $table->date('payment_date');
             $table->decimal('amount', 10, 2);
-            $table->string('payment_method')->nullable();
+            $table->string('payment_method')->nullable()->default('cash');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

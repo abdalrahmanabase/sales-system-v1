@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Eloquent\Model;
+use App\Helpers\FormatHelper;
 
 class PurchaseInvoiceResource extends Resource
 {
@@ -86,11 +87,11 @@ class PurchaseInvoiceResource extends Resource
                     ->badge()
                     ->color('info'),
                 Tables\Columns\TextColumn::make('invoice_date')
-                    ->date()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDate($state))
                     ->sortable()
                     ->label('Date'),
                 Tables\Columns\TextColumn::make('total_amount')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable()
                     ->label('Total'),
                 Tables\Columns\TextColumn::make('items_count')
@@ -103,7 +104,7 @@ class PurchaseInvoiceResource extends Resource
                     ->badge()
                     ->color('warning'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

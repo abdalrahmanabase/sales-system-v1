@@ -21,6 +21,7 @@ class Product extends Model
         'stock',
         'low_stock_threshold',
         'is_active',
+        'base_unit_id',
     ];
 
     protected $casts = [
@@ -29,6 +30,44 @@ class Product extends Model
         'is_active' => 'boolean',
         'low_stock_threshold' => 'integer',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Create default "Piece" unit when a product is created
+        static::created(function ($product) {
+            // Only create default unit if no units exist
+            if ($product->productUnits()->count() === 0) {
+                $defaultUnit = $product->productUnits()->create([
+                    'name' => 'Piece',
+                    'abbreviation' => 'pcs',
+                    'conversion_factor' => 1,
+                    'purchase_price' => $product->purchase_price_per_unit ?? 0,
+                    'sell_price' => $product->sell_price_per_unit ?? 0,
+                    'is_base_unit' => true,
+                    'is_active' => true,
+                ]);
+
+                // Update the product's base_unit_id
+                $product->update(['base_unit_id' => $defaultUnit->id]);
+            }
+            
+            // Record initial creation in price history
+            $product->recordPriceChange(
+                0, // No old purchase price (initial creation)
+                $product->purchase_price_per_unit ?? 0,
+                0, // No old sell price (initial creation)
+                $product->sell_price_per_unit ?? 0,
+                'product_creation',
+                'Product created with initial prices',
+                $product->base_unit_id,
+                'creation',
+                null,
+                'Product Creation'
+            );
+        });
+    }
 
     // Main category (parent category)
     public function category()
@@ -106,6 +145,11 @@ class Product extends Model
         return $this->hasMany(ProductUnit::class);
     }
 
+    public function baseUnit()
+    {
+        return $this->belongsTo(ProductUnit::class, 'base_unit_id');
+    }
+
     public function purchaseInvoiceItems()
     {
         return $this->hasMany(PurchaseInvoiceItem::class);
@@ -142,9 +186,10 @@ class Product extends Model
     }
 
     // Helper method to record price change history
-    public function recordPriceChange($oldPurchasePrice, $newPurchasePrice, $oldSellPrice, $newSellPrice, $reason = 'manual_update', $notes = null)
+    public function recordPriceChange($oldPurchasePrice, $newPurchasePrice, $oldSellPrice, $newSellPrice, $reason = 'manual_update', $notes = null, $unitId = null, $sourceType = null, $sourceId = null, $sourceReference = null)
     {
         return $this->priceHistories()->create([
+            'unit_id' => $unitId,
             'old_purchase_price' => $oldPurchasePrice,
             'new_purchase_price' => $newPurchasePrice,
             'old_sell_price' => $oldSellPrice,
@@ -152,6 +197,9 @@ class Product extends Model
             'changed_at' => now(),
             'changed_by' => auth()->id(),
             'change_reason' => $reason,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'source_reference' => $sourceReference,
             'notes' => $notes,
         ]);
     }
@@ -178,18 +226,218 @@ class Product extends Model
         }
     }
 
-    // Scope to get products by parent category
+    // Get base unit for this product
+    public function getBaseUnit()
+    {
+        return $this->productUnits()->where('is_base_unit', true)->first();
+    }
+
+    // Get active units for this product
+    public function getActiveUnits()
+    {
+        return $this->productUnits()->where('is_active', true)->get();
+    }
+
+    // Helper method to ensure default unit exists
+    public function ensureDefaultUnitExists()
+    {
+        // Check if a default unit already exists
+        $existingDefaultUnit = $this->productUnits()
+            ->where('name', 'Piece')
+            ->where('abbreviation', 'pcs')
+            ->where('conversion_factor', 1)
+            ->where('is_base_unit', true)
+            ->first();
+            
+        if ($existingDefaultUnit) {
+            // Update product's base_unit_id if not set
+            if (!$this->base_unit_id) {
+                $this->update(['base_unit_id' => $existingDefaultUnit->id]);
+            }
+            return $existingDefaultUnit;
+        }
+        
+        // Check if any units exist at all
+        if ($this->productUnits()->count() === 0) {
+            $defaultUnit = $this->productUnits()->create([
+                'name' => 'Piece',
+                'abbreviation' => 'pcs',
+                'conversion_factor' => 1,
+                'purchase_price' => $this->purchase_price_per_unit ?? 0,
+                'sell_price' => $this->sell_price_per_unit ?? 0,
+                'is_base_unit' => true,
+                'is_active' => true,
+            ]);
+
+            $this->update(['base_unit_id' => $defaultUnit->id]);
+            return $defaultUnit;
+        }
+        
+        // If units exist but no default, make the first one the default
+        $firstUnit = $this->productUnits()->first();
+        $firstUnit->update([
+            'name' => 'Piece',
+            'abbreviation' => 'pcs',
+            'conversion_factor' => 1,
+            'is_base_unit' => true,
+            'is_active' => true,
+        ]);
+        
+        $this->update(['base_unit_id' => $firstUnit->id]);
+        return $firstUnit;
+    }
+
+    // Helper method to update unit prices based on base price changes
+    public function updateUnitPricesFromBase()
+    {
+        $baseUnit = $this->getBaseUnit();
+        if ($baseUnit) {
+            foreach ($this->productUnits as $unit) {
+                if ($unit->id !== $baseUnit->id) {
+                    $unit->update([
+                        'purchase_price' => $this->purchase_price_per_unit * $unit->conversion_factor,
+                        'sell_price' => $this->sell_price_per_unit * $unit->conversion_factor,
+                    ]);
+                }
+            }
+        }
+    }
+
+    // Get stock by location and unit
+    public function getStockByLocation($warehouseId, $branchId, $unitId = null)
+    {
+        $query = $this->productStocks()
+            ->where('warehouse_id', $warehouseId)
+            ->where('branch_id', $branchId);
+
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        }
+
+        return $query->sum('quantity');
+    }
+
+    // Get total stock across all locations for a specific unit
+    public function getTotalStock($unitId = null)
+    {
+        $query = $this->productStocks();
+
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        }
+
+        return $query->sum('quantity');
+    }
+
+    // Get stock movements for a specific date
+    public function getStockMovementsForDate($date, $warehouseId = null, $branchId = null)
+    {
+        $query = $this->stockMovements()
+            ->whereDate('created_at', $date);
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        return $query->get();
+    }
+
+    // Get daily stock summary
+    public function getDailyStockSummary($date, $warehouseId = null, $branchId = null)
+    {
+        $movements = $this->getStockMovementsForDate($date, $warehouseId, $branchId);
+
+        $summary = [
+            'date' => $date,
+            'opening_balance' => 0,
+            'incoming' => 0,
+            'outgoing' => 0,
+            'closing_balance' => 0,
+            'movements_count' => $movements->count(),
+        ];
+
+        foreach ($movements as $movement) {
+            if ($movement->movement_type === 'in') {
+                $summary['incoming'] += $movement->quantity;
+            } else {
+                $summary['outgoing'] += $movement->quantity;
+            }
+        }
+
+        // Calculate closing balance (this would need to be calculated from previous day's closing + movements)
+        $summary['closing_balance'] = $summary['incoming'] - $summary['outgoing'];
+
+        return $summary;
+    }
+
+    // Get price history for a specific unit
+    public function getPriceHistoryForUnit($unitId, $startDate = null, $endDate = null)
+    {
+        $query = $this->priceHistories()->where('unit_id', $unitId);
+
+        if ($startDate) {
+            $query->where('changed_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('changed_at', '<=', $endDate);
+        }
+
+        return $query->get();
+    }
+
+    // Get latest price for a specific unit
+    public function getLatestPriceForUnit($unitId)
+    {
+        return $this->priceHistories()
+            ->where('unit_id', $unitId)
+            ->latest('changed_at')
+            ->first();
+    }
+
+    // Update product prices and record history
+    public function updatePrices($newPurchasePrice, $newSellPrice, $reason = 'manual_update', $unitId = null, $sourceType = null, $sourceId = null, $sourceReference = null, $notes = null)
+    {
+        $oldPurchasePrice = $this->purchase_price_per_unit;
+        $oldSellPrice = $this->sell_price_per_unit;
+
+        // Update product prices
+        $this->update([
+            'purchase_price_per_unit' => $newPurchasePrice,
+            'sell_price_per_unit' => $newSellPrice,
+        ]);
+
+        // Record price change history
+        $this->recordPriceChange(
+            $oldPurchasePrice,
+            $newPurchasePrice,
+            $oldSellPrice,
+            $newSellPrice,
+            $reason,
+            $notes,
+            $unitId,
+            $sourceType,
+            $sourceId,
+            $sourceReference
+        );
+
+        // Update unit prices based on new base prices
+        $this->updateUnitPricesFromBase();
+    }
+
+    // Scope to filter by parent category
     public function scopeByParentCategory($query, $parentCategoryId)
     {
-        return $query->where(function ($q) use ($parentCategoryId) {
-            $q->where('category_id', $parentCategoryId)
-              ->orWhereHas('subcategory', function ($subQ) use ($parentCategoryId) {
-                  $subQ->where('parent_id', $parentCategoryId);
-              });
+        return $query->whereHas('category', function ($q) use ($parentCategoryId) {
+            $q->where('id', $parentCategoryId);
         });
     }
 
-    // Scope to get products by subcategory
+    // Scope to filter by subcategory
     public function scopeBySubcategory($query, $subcategoryId)
     {
         return $query->where('subcategory_id', $subcategoryId);
@@ -198,10 +446,8 @@ class Product extends Model
     // Scope to get low stock products
     public function scopeLowStock($query)
     {
-        return $query->where(function ($q) {
-            $q->whereRaw('stock <= low_stock_threshold')
-              ->where('stock', '>', 0);
-        });
+        return $query->whereRaw('stock <= low_stock_threshold')
+            ->where('stock', '>', 0);
     }
 
     // Scope to get out of stock products
@@ -213,9 +459,47 @@ class Product extends Model
     // Scope to get products with custom low stock threshold
     public function scopeWithCustomLowStock($query, $threshold)
     {
-        if (is_numeric($threshold) && $threshold >= 0) {
-            return $query->where('low_stock_threshold', '>', (int) $threshold);
+        return $query->where('stock', '<=', $threshold)
+            ->where('stock', '>', 0);
+    }
+
+    // Scope to get products with units
+    public function scopeWithUnits($query)
+    {
+        return $query->whereHas('productUnits');
+    }
+
+    // Scope to get products with price history
+    public function scopeWithPriceHistory($query)
+    {
+        return $query->whereHas('priceHistories');
+    }
+
+    // Scope to get products with stock movements
+    public function scopeWithStockMovements($query)
+    {
+        return $query->whereHas('stockMovements');
+    }
+
+    // Computed attributes for table display
+    public function getProfitMarginAttribute()
+    {
+        if ($this->purchase_price_per_unit > 0 && $this->sell_price_per_unit > 0) {
+            return (($this->sell_price_per_unit - $this->purchase_price_per_unit) / $this->purchase_price_per_unit) * 100;
         }
-        return $query;
+        return null;
+    }
+
+    public function getProfitMarginColorAttribute()
+    {
+        if ($this->purchase_price_per_unit > 0 && $this->sell_price_per_unit > 0) {
+            return ($this->sell_price_per_unit - $this->purchase_price_per_unit) > 0 ? 'success' : 'danger';
+        }
+        return 'gray';
+    }
+
+    public function getUnitsCountAttribute()
+    {
+        return $this->productUnits()->count();
     }
 }

@@ -10,6 +10,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\ProviderPayment;
 use App\Models\Branch;
 use App\Models\Warehouse;
+use App\Helpers\FormatHelper;
 use Filament\Forms;
 use App\Models\Provider;
 use App\Models\ProviderSale;
@@ -110,7 +111,7 @@ class ViewProvider extends ViewRecord
                                         ->searchable()
                                         ->placeholder('Select existing product or scan barcode for new')
                                         ->live()
-                                        ->afterStateUpdated(function ($state, $set) {
+                                        ->afterStateUpdated(function ($state, $set, $get) {
                                             if ($state) {
                                                 $product = \App\Models\Product::find($state);
                                                 if ($product) {
@@ -119,6 +120,18 @@ class ViewProvider extends ViewRecord
                                                     $set('unit_price', $product->purchase_price_per_unit);
                                                     $set('sell_price', $product->sell_price_per_unit);
                                                     $set('is_new_product', false);
+                                                    
+                                                    // Load available units for this product
+                                                    $units = $product->productUnits()->active()->pluck('name', 'id')->toArray();
+                                                    $set('available_units', $units);
+                                                    
+                                                    // Set default unit to base unit
+                                                    $baseUnit = $product->baseUnit;
+                                                    if ($baseUnit) {
+                                                        $set('unit_id', $baseUnit->id);
+                                                        $set('unit_price', $baseUnit->purchase_price);
+                                                        $set('sell_price', $baseUnit->sell_price);
+                                                    }
                                                 }
                                             }
                                         })
@@ -131,6 +144,43 @@ class ViewProvider extends ViewRecord
                                                 };
                                             }
                                         ]),
+                                    Forms\Components\Select::make('unit_id')
+                                        ->label('Unit')
+                                        ->options(function ($get) {
+                                            $productId = $get('product_id');
+                                            if ($productId) {
+                                                $product = \App\Models\Product::find($productId);
+                                                if ($product) {
+                                                    return $product->productUnits()->active()->pluck('name', 'id')->toArray();
+                                                }
+                                            }
+                                            return [];
+                                        })
+                                        ->searchable()
+                                        ->placeholder('Select unit')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            if ($state && $get('product_id')) {
+                                                $product = \App\Models\Product::find($get('product_id'));
+                                                $unit = $product->productUnits()->find($state);
+                                                if ($unit) {
+                                                    $set('unit_price', $unit->purchase_price);
+                                                    $set('sell_price', $unit->sell_price);
+                                                }
+                                            }
+                                        })
+                                        ->required(fn ($get) => !empty($get('product_id')))
+                                        ->helperText(function ($get) {
+                                            $productId = $get('product_id');
+                                            if ($productId) {
+                                                $product = \App\Models\Product::find($productId);
+                                                if ($product) {
+                                                    $unitCount = $product->productUnits()->active()->count();
+                                                    return "Select the unit for this product. {$unitCount} unit(s) available.";
+                                                }
+                                            }
+                                            return 'Select the unit for this product';
+                                        }),
                                     Forms\Components\TextInput::make('product_name')
                                         ->label('Product Name')
                                         ->required()
@@ -157,34 +207,73 @@ class ViewProvider extends ViewRecord
                                         ->required()
                                         ->prefix('$')
                                         ->placeholder('0.00')
-                                        ->readOnly(fn ($get) => !empty($get('product_id')))
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            // Allow price changes for existing products
+                                            if (!empty($get('product_id'))) {
+                                                $set('price_changed', true);
+                                            }
+                                        })
                                         ->rules([
                                             function ($get) {
                                                 return function (string $attribute, $value, $fail) use ($get) {
-                                                    if (!empty($get('product_id')) && (empty($value) || $value == 0)) {
-                                                        $fail('Purchase price cannot be zero for existing products.');
+                                                    if (empty($value) || $value <= 0) {
+                                                        $fail('Purchase price must be greater than zero.');
                                                     }
                                                 };
                                             }
-                                        ]),
+                                        ])
+                                        ->helperText(function ($get) {
+                                            if (!empty($get('product_id')) && ($get('price_changed') ?? false)) {
+                                                return 'Price change will be recorded in price history.';
+                                            }
+                                            return 'Purchase price per unit';
+                                        }),
                                     Forms\Components\TextInput::make('sell_price')
                                         ->numeric()
                                         ->required()
                                         ->prefix('$')
-                                        ->placeholder('0.00'),
+                                        ->placeholder('0.00')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            // Allow price changes for existing products
+                                            if (!empty($get('product_id'))) {
+                                                $set('price_changed', true);
+                                            }
+                                        })
+                                        ->rules([
+                                            function ($get) {
+                                                return function (string $attribute, $value, $fail) use ($get) {
+                                                    if (empty($value) || $value <= 0) {
+                                                        $fail('Sell price must be greater than zero.');
+                                                    }
+                                                };
+                                            }
+                                        ])
+                                        ->helperText(function ($get) {
+                                            if (!empty($get('product_id')) && ($get('price_changed') ?? false)) {
+                                                return 'Price change will be recorded in price history.';
+                                            }
+                                            return 'Sell price per unit';
+                                        }),
                                     Forms\Components\Toggle::make('is_bonus')
                                         ->label('Bonus Item')
                                         ->helperText('If checked, cost will be zero but purchase price is still recorded for tracking')
                                         ->default(false),
                                     Forms\Components\Hidden::make('is_new_product')
                                         ->default(false),
+                                    Forms\Components\Hidden::make('price_changed')
+                                        ->default(false),
+                                    Forms\Components\Hidden::make('available_units')
+                                        ->default([]),
                                 ])
                                 ->defaultItems(1)
                                 ->createItemButtonLabel('Add Item')
-                                ->columns(3)
+                                ->columns(4)
                                 ->itemLabel(fn (array $state): ?string => 
                                     ($state['product_name'] ?? 'New Item') . 
-                                    ($state['is_new_product'] ?? false ? ' (NEW)' : '')
+                                    ($state['is_new_product'] ?? false ? ' (NEW)' : '') .
+                                    ($state['unit_id'] ? ' - ' . \App\Models\ProductUnit::find($state['unit_id'])?->name : '')
                                 ),
                         ]),
                     Forms\Components\Section::make('Additional Information')
@@ -218,10 +307,16 @@ class ViewProvider extends ViewRecord
                         
                         foreach ($items as $item) {
                             $product = null;
+                            $unit = null;
                             
                             // Check if product_id is provided (existing product)
                             if (!empty($item['product_id'])) {
                                 $product = \App\Models\Product::find($item['product_id']);
+                                
+                                // Get the selected unit
+                                if (!empty($item['unit_id'])) {
+                                    $unit = $product->productUnits()->find($item['unit_id']);
+                                }
                             }
                             
                             // If no product found by ID, try to find by barcode
@@ -241,19 +336,52 @@ class ViewProvider extends ViewRecord
                                     'low_stock_threshold' => 10,
                                     'is_active' => true,
                                 ]);
-                            } else {
-                                // Check if prices changed and record history
-                                $oldPurchasePrice = $product->purchase_price_per_unit;
-                                $oldSellPrice = $product->sell_price_per_unit;
-                                $newPurchasePrice = $item['unit_price'] ?? $oldPurchasePrice;
-                                $newSellPrice = $item['sell_price'] ?? $oldSellPrice;
                                 
-                                if ($newPurchasePrice != $oldPurchasePrice || $newSellPrice != $oldSellPrice) {
-                                    // Update product prices
-                                    $product->update([
-                                        'purchase_price_per_unit' => $newPurchasePrice,
-                                        'sell_price_per_unit' => $newSellPrice,
-                                    ]);
+                                // Create default unit for new product
+                                $unit = $product->productUnits()->create([
+                                    'name' => 'Piece',
+                                    'abbreviation' => 'pcs',
+                                    'conversion_factor' => 1,
+                                    'purchase_price' => $item['unit_price'] ?? 0,
+                                    'sell_price' => $item['sell_price'] ?? 0,
+                                    'is_base_unit' => true,
+                                    'is_active' => true,
+                                ]);
+                                
+                                // Update product's base_unit_id
+                                $product->update(['base_unit_id' => $unit->id]);
+                            } else {
+                                // Handle existing product with potential price changes
+                                $priceChanged = $item['price_changed'] ?? false;
+                                
+                                if ($priceChanged) {
+                                    // Get current prices for the selected unit
+                                    $oldPurchasePrice = $unit ? $unit->purchase_price : $product->purchase_price_per_unit;
+                                    $oldSellPrice = $unit ? $unit->sell_price : $product->sell_price_per_unit;
+                                    $newPurchasePrice = $item['unit_price'] ?? $oldPurchasePrice;
+                                    $newSellPrice = $item['sell_price'] ?? $oldSellPrice;
+                                    
+                                    // Update unit prices if unit is specified
+                                    if ($unit) {
+                                        $unit->update([
+                                            'purchase_price' => $newPurchasePrice,
+                                            'sell_price' => $newSellPrice,
+                                        ]);
+                                        
+                                        // If this is the base unit, also update product's main prices
+                                        if ($unit->is_base_unit) {
+                                            $product->update([
+                                                'purchase_price_per_unit' => $newPurchasePrice,
+                                                'sell_price_per_unit' => $newSellPrice,
+                                            ]);
+                                        }
+                                    } else {
+                                        // Update product's main prices if no specific unit
+                                        $product->update([
+                                            'purchase_price_per_unit' => $newPurchasePrice,
+                                            'sell_price_per_unit' => $newSellPrice,
+                                        ]);
+                                    }
                                     
                                     // Record price change history
                                     $product->recordPriceChange(
@@ -262,8 +390,17 @@ class ViewProvider extends ViewRecord
                                         $oldSellPrice,
                                         $newSellPrice,
                                         'invoice_update',
-                                        "Price updated via invoice #{$invoice->invoice_number}"
+                                        "Price updated via invoice #{$invoice->invoice_number}",
+                                        $unit ? $unit->id : null,
+                                        'provider',
+                                        $this->record->id,
+                                        "Invoice #{$invoice->invoice_number}"
                                     );
+                                }
+                                
+                                // If no unit was selected, use base unit
+                                if (!$unit) {
+                                    $unit = $product->baseUnit;
                                 }
                             }
                             
@@ -276,10 +413,30 @@ class ViewProvider extends ViewRecord
                                 'purchase_price' => $unitPrice,
                                 'sell_price' => $item['sell_price'] ?? 0,
                                 'is_bonus' => $item['is_bonus'] ?? false,
+                                'unit_id' => $unit ? $unit->id : null,
                             ]);
                             
                             // Add to product stock (always, even if bonus)
                             $product->increment('stock', $item['quantity'] ?? 1);
+                            
+                            // Record stock movement for the product
+                            $productStock = \App\Models\ProductStock::firstOrCreate([
+                                'product_id' => $product->id,
+                                'warehouse_id' => $data['warehouse_id'] ?? null,
+                                'branch_id' => $data['branch_id'] ?? auth()->user()->branch_id,
+                                'unit_id' => $unit ? $unit->id : null,
+                            ], [
+                                'quantity' => 0,
+                                'last_updated_at' => now(),
+                            ]);
+                            
+                            $productStock->addStock(
+                                $item['quantity'] ?? 1,
+                                "Added via invoice #{$invoice->invoice_number}",
+                                'provider',
+                                $this->record->id,
+                                "Invoice #{$invoice->invoice_number}"
+                            );
                             
                             $total += $cost * ($item['quantity'] ?? 1);
                         }
@@ -292,13 +449,20 @@ class ViewProvider extends ViewRecord
                 ->modalDescription(function (array $data) {
                     $items = $data['items'] ?? [];
                     $newProducts = collect($items)->filter(fn($item) => $item['is_new_product'] ?? false);
+                    $priceChanges = collect($items)->filter(fn($item) => $item['price_changed'] ?? false);
+                    
+                    $description = "This will create a new purchase invoice.";
                     
                     if ($newProducts->count() > 0) {
                         $newProductNames = $newProducts->pluck('product_name')->implode(', ');
-                        return "This will create a new purchase invoice. The following new products will be created: {$newProductNames}";
+                        $description .= " The following new products will be created: {$newProductNames}.";
                     }
                     
-                    return "This will create a new purchase invoice.";
+                    if ($priceChanges->count() > 0) {
+                        $description .= " Price changes will be recorded in the price history for existing products.";
+                    }
+                    
+                    return $description;
                 })
                 ->modalHeading('Create New Purchase Invoice')
                 ->modalSubmitActionLabel('Create Invoice')

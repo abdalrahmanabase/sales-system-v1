@@ -10,6 +10,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Product;
 use App\Models\Category;
+use App\Helpers\FormatHelper;
 
 class ProductStocksRelationManager extends RelationManager
 {
@@ -33,16 +34,17 @@ class ProductStocksRelationManager extends RelationManager
                     ->sortable(),
                 Tables\Columns\TextColumn::make('quantity')
                     ->label('Quantity')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatQuantity($state))
                     ->sortable()
                     ->badge()
                     ->color(fn($state) => $state <= 10 ? 'danger' : 'success'),
                 Tables\Columns\TextColumn::make('product.sell_price_per_unit')
                     ->label('Unit Price')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('last_updated_at')
                     ->label('Last Updated')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable(),
             ])
             ->filters([

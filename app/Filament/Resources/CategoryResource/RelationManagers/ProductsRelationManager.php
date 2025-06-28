@@ -9,6 +9,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Helpers\FormatHelper;
 
 class ProductsRelationManager extends RelationManager
 {
@@ -34,14 +35,15 @@ class ProductsRelationManager extends RelationManager
                     ->sortable(),
                 Tables\Columns\TextColumn::make('purchase_price_per_unit')
                     ->label('Purchase Price')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('sell_price_per_unit')
                     ->label('Sell Price')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stock')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatQuantity($state))
                     ->sortable()
                     ->badge()
                     ->color(fn($state) => $state <= 10 ? 'danger' : 'success'),
@@ -51,7 +53,7 @@ class ProductsRelationManager extends RelationManager
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

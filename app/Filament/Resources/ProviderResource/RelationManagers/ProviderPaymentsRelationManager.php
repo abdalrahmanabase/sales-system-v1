@@ -9,6 +9,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\PurchaseInvoice;
+use App\Helpers\FormatHelper;
 
 class ProviderPaymentsRelationManager extends RelationManager
 {
@@ -69,11 +70,11 @@ class ProviderPaymentsRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('payment_date')
                     ->label('Payment Date')
-                    ->date()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDate($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Amount')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable()
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('payment_method')
@@ -87,7 +88,7 @@ class ProviderPaymentsRelationManager extends RelationManager
                     ->placeholder('No Invoice'),
                 Tables\Columns\TextColumn::make('purchaseInvoice.total_amount')
                     ->label('Invoice Amount')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->placeholder('N/A'),
                 Tables\Columns\TextColumn::make('notes')
                     ->label('Notes')
@@ -95,7 +96,7 @@ class ProviderPaymentsRelationManager extends RelationManager
                     ->placeholder('No notes'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Recorded')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

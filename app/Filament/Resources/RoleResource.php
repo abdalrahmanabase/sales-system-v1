@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Spatie\Permission\Models\Permission;
 use App\Helpers\PermissionHelper;
+use App\Helpers\FormatHelper;
 
 class RoleResource extends Resource
 {
@@ -86,7 +87,7 @@ class RoleResource extends Resource
                     ->counts('users')
                     ->label('Users'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

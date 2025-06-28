@@ -1,117 +1,83 @@
-<div class="space-y-4">
-    <div class="bg-gray-50 p-4 rounded-lg">
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">Invoice Details</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-                <span class="font-medium text-gray-700">Invoice Number:</span>
-                <span class="ml-2 text-gray-900">{{ $invoice->invoice_number ?? 'N/A' }}</span>
-            </div>
-            <div>
-                <span class="font-medium text-gray-700">Date:</span>
-                <span class="ml-2 text-gray-900">{{ $invoice->invoice_date->format('M d, Y') }}</span>
-            </div>
-            <div>
-                <span class="font-medium text-gray-700">Total Amount:</span>
-                <span class="ml-2 text-gray-900 font-semibold">${{ number_format($invoice->total_amount, 2) }}</span>
-            </div>
-            <div>
-                <span class="font-medium text-gray-700">Items Count:</span>
-                <span class="ml-2 text-gray-900">{{ $items->count() }}</span>
-            </div>
+@php
+use App\Helpers\FormatHelper;
+@endphp
+
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+@endpush
+<div class="invoice-container">
+    <div class="invoice-header">
+        <h4 class="invoice-title">Purchase Invoice Details</h4>
+    </div>
+
+    <div class="invoice-details">
+        <div class="invoice-details-item">
+            <span class="invoice-details-label">Invoice Number:</span>
+            <span class="invoice-details-value">{{ $invoice->invoice_number }}</span>
+        </div>
+        <div class="invoice-details-item">
+            <span class="invoice-details-label">Date:</span>
+            <span class="invoice-details-value">{{ FormatHelper::formatDate($invoice->invoice_date) }}</span>
+        </div>
+        <div class="invoice-details-item">
+            <span class="invoice-details-label">Total Amount:</span>
+            <span class="invoice-details-value">{{ FormatHelper::formatCurrency($invoice->total_amount) }}</span>
         </div>
     </div>
 
     @if($items->count() > 0)
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+        <div class="invoice-table-container">
+            <table class="invoice-table">
+                <thead>
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Product
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Barcode
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Quantity
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Unit Price
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Type
-                        </th>
+                        <th>Product</th>
+                        <th>Unit</th>
+                        <th>Quantity</th>
+                        <th>Purchase Price</th>
+                        <th>Total</th>
+                        <th>Type</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody>
                     @foreach($items as $item)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ $item->product->name ?? 'Unknown Product' }}
-                                </div>
-                                @if($item->product)
-                                    <div class="text-sm text-gray-500">
-                                        ID: {{ $item->product->id }}
-                                    </div>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ $item->product->barcode ?? 'N/A' }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ number_format($item->quantity) }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                ${{ number_format($item->purchase_price, 2) }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                ${{ number_format($item->quantity * $item->purchase_price, 2) }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if($item->is_bonus)
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Bonus
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        Regular
-                                    </span>
-                                @endif
-                            </td>
-                        </tr>
+                    <tr>
+                        <td>
+                            <div class="invoice-product-info">
+                                <div class="invoice-product-name">{{ $item->product->name }}</div>
+                                <div class="invoice-product-barcode">{{ $item->product->barcode ?? 'N/A' }}</div>
+                            </div>
+                        </td>
+                        <td>{{ $item->unit?->name ?? 'Base Unit' }}</td>
+                        <td>{{ FormatHelper::formatNumber($item->quantity, 0) }}</td>
+                        <td>{{ FormatHelper::formatCurrency($item->purchase_price) }}</td>
+                        <td>{{ FormatHelper::formatCurrency($item->quantity * $item->purchase_price) }}</td>
+                        <td>
+                            <span class="invoice-item-type {{ $item->is_bonus ? 'bonus' : 'regular' }}">
+                                {{ $item->is_bonus ? 'Bonus' : 'Regular' }}
+                            </span>
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="bg-gray-50">
+                <tfoot>
                     <tr>
-                        <td colspan="4" class="px-6 py-3 text-right text-sm font-medium text-gray-700">
-                            Regular Items Total:
-                        </td>
-                        <td class="px-6 py-3 text-sm font-medium text-gray-900">
-                            ${{ number_format($items->where('is_bonus', false)->sum(function($item) { return $item->quantity * $item->purchase_price; }), 2) }}
+                        <td colspan="4" class="invoice-total-label">Regular Items Total:</td>
+                        <td class="invoice-total-value">
+                            {{ FormatHelper::formatCurrency($items->where('is_bonus', false)->sum(function($item) { return $item->quantity * $item->purchase_price; })) }}
                         </td>
                         <td></td>
                     </tr>
-                    @if($items->where('is_bonus', true)->count() > 0)
-                        <tr>
-                            <td colspan="4" class="px-6 py-3 text-right text-sm font-medium text-gray-700">
-                                Bonus Items Total:
-                            </td>
-                            <td class="px-6 py-3 text-sm font-medium text-gray-900">
-                                ${{ number_format($items->where('is_bonus', true)->sum(function($item) { return $item->quantity * $item->purchase_price; }), 2) }}
-                            </td>
-                            <td></td>
-                        </tr>
-                    @endif
-                    <tr class="border-t-2 border-gray-300">
-                        <td colspan="4" class="px-6 py-3 text-right text-lg font-bold text-gray-900">
-                            Invoice Total:
+                    <tr>
+                        <td colspan="4" class="invoice-total-label">Bonus Items Total:</td>
+                        <td class="invoice-total-value">
+                            {{ FormatHelper::formatCurrency($items->where('is_bonus', true)->sum(function($item) { return $item->quantity * $item->purchase_price; })) }}
                         </td>
-                        <td class="px-6 py-3 text-lg font-bold text-gray-900">
-                            ${{ number_format($invoice->total_amount, 2) }}
+                        <td></td>
+                    </tr>
+                    <tr class="invoice-grand-total">
+                        <td colspan="4" class="invoice-total-label">Grand Total:</td>
+                        <td class="invoice-total-value">
+                            {{ FormatHelper::formatCurrency($invoice->total_amount) }}
                         </td>
                         <td></td>
                     </tr>
@@ -119,8 +85,8 @@
             </table>
         </div>
     @else
-        <div class="text-center py-8">
-            <div class="text-gray-500 text-lg">No items found for this invoice.</div>
+        <div class="invoice-no-items">
+            <p>No items found for this invoice.</p>
         </div>
     @endif
 </div> 

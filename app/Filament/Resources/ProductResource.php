@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Provider;
 use App\Models\Warehouse;
 use App\Models\Branch;
+use App\Helpers\FormatHelper;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -18,6 +19,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
 
 class ProductResource extends Resource
 {
@@ -36,12 +38,28 @@ class ProductResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255)
+                            ->minLength(2)
                             ->label('Product Name')
-                            ->placeholder('e.g., iPhone 15, Samsung TV, Nike Shoes'),
+                            ->placeholder('e.g., iPhone 15, Samsung TV, Nike Shoes')
+                            ->rules([
+                                'required',
+                                'string',
+                                'min:2',
+                                'max:255',
+                            ]),
                         GlobalBarcodeScanner::make('barcode')
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true)
+                            ->rules([
+                                'required',
+                                'string',
+                                'max:255',
+                                'regex:/^[A-Za-z0-9\-_]+$/', // Only alphanumeric, hyphens, and underscores
+                            ])
+                            ->validationMessages([
+                                'regex' => 'Barcode can only contain letters, numbers, hyphens, and underscores.',
+                            ])
                             ->afterStateUpdated(function ($state, $set, $get) {
                                 // Auto-fill product details if barcode exists
                                 if ($state) {
@@ -59,7 +77,7 @@ class ProductResource extends Resource
                             }),
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name', function (Builder $query) {
-                                return $query->whereNull('parent_id'); // Only show parent categories
+                                return $query->whereNull('parent_id'); // Only show top-level categories
                             })
                             ->searchable()
                             ->preload()
@@ -83,20 +101,7 @@ class ProductResource extends Resource
                             })
                             ->searchable()
                             ->preload()
-                            ->live()
-                            ->rules([
-                                function ($get) {
-                                    return function (string $attribute, $value, $fail) use ($get) {
-                                        $parentId = $get('category_id');
-                                        if ($value && $parentId) {
-                                            $subcategory = Category::find($value);
-                                            if ($subcategory && $subcategory->parent_id != $parentId) {
-                                                $fail('The selected subcategory does not belong to the selected parent category.');
-                                            }
-                                        }
-                                    };
-                                }
-                            ]),
+                            ->live(),
                         Forms\Components\Select::make('provider_id')
                             ->relationship('provider', 'name')
                             ->searchable()
@@ -111,17 +116,59 @@ class ProductResource extends Resource
                             ->numeric()
                             ->label('Purchase Price per Unit')
                             ->prefix('$')
-                            ->placeholder('0.00'),
+                            ->placeholder('0.00')
+                            ->minValue(0)
+                            ->step(1)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Update product units pricing when base price changes
+                                $productUnits = $get('productUnits') ?? [];
+                                if (!empty($productUnits)) {
+                                    foreach ($productUnits as $index => $unit) {
+                                        if (isset($unit['conversion_factor']) && $unit['conversion_factor'] > 0) {
+                                            $productUnits[$index]['purchase_price'] = $state * $unit['conversion_factor'];
+                                            $productUnits[$index]['sell_price'] = ($get('sell_price_per_unit') ?? 0) * $unit['conversion_factor'];
+                                        }
+                                    }
+                                    $set('productUnits', $productUnits);
+                                }
+                            })
+                            ->rules([
+                                'required',
+                                'numeric',
+                                'min:0',
+                            ]),
                         Forms\Components\TextInput::make('sell_price_per_unit')
                             ->required()
                             ->numeric()
                             ->label('Sell Price per Unit')
                             ->prefix('$')
-                            ->placeholder('0.00'),
+                            ->placeholder('0.00')
+                            ->minValue(0)
+                            ->step(0.01)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Update product units pricing when base price changes
+                                $productUnits = $get('productUnits') ?? [];
+                                if (!empty($productUnits)) {
+                                    foreach ($productUnits as $index => $unit) {
+                                        if (isset($unit['conversion_factor']) && $unit['conversion_factor'] > 0) {
+                                            $productUnits[$index]['sell_price'] = $state * $unit['conversion_factor'];
+                                        }
+                                    }
+                                    $set('productUnits', $productUnits);
+                                }
+                            })
+                            ->rules([
+                                'required',
+                                'numeric',
+                                'min:0',
+                            ]),
                         Forms\Components\TextInput::make('stock')
                             ->numeric()
                             ->label('Current Stock')
                             ->default(0)
+                            ->readOnly()
                             ->placeholder('0'),
                         Forms\Components\TextInput::make('low_stock_threshold')
                             ->numeric()
@@ -149,13 +196,115 @@ class ProductResource extends Resource
                                     ->maxLength(10)
                                     ->label('Abbreviation')
                                     ->placeholder('e.g., pcs, box, pack'),
+                                Forms\Components\TextInput::make('conversion_factor')
+                                    ->numeric()
+                                    ->label('Conversion Factor')
+                                    ->default(1)
+                                    ->step(1)
+                                    ->minValue(1)
+                                    ->required()
+                                    ->formatStateUsing(fn ($state) => FormatHelper::formatNumber($state, 0))
+                                    ->helperText('How many base units this unit represents (e.g., 1 box = 12 pieces)')
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get, $context) {
+                                        // Auto-calculate prices based on conversion factor
+                                        if ($state && $state > 0) {
+                                            $basePurchasePrice = $get('../../purchase_price_per_unit') ?? 0;
+                                            $baseSellPrice = $get('../../sell_price_per_unit') ?? 0;
+                                            
+                                            $set('purchase_price', $basePurchasePrice * $state);
+                                            $set('sell_price', $baseSellPrice * $state);
+                                        }
+                                    })
+                                    ->rules([
+                                        'required',
+                                        'numeric',
+                                        'min:1',
+                                    ]),
+                                Forms\Components\TextInput::make('purchase_price')
+                                    ->numeric()
+                                    ->label('Purchase Price for this Unit')
+                                    ->prefix('$')
+                                    ->placeholder('0.00')
+                                    ->required()
+                                    ->minValue(0)
+                                    ->step(0.01)
+                                    ->helperText('Purchase price for this specific unit')
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get, $context) {
+                                        // Update base unit price if this is the base unit
+                                        if ($get('is_base_unit')) {
+                                            $set('../../purchase_price_per_unit', $state);
+                                        }
+                                    })
+                                    ->rules([
+                                        'required',
+                                        'numeric',
+                                        'min:0',
+                                    ]),
+                                Forms\Components\TextInput::make('sell_price')
+                                    ->numeric()
+                                    ->label('Sell Price for this Unit')
+                                    ->prefix('$')
+                                    ->placeholder('0.00')
+                                    ->required()
+                                    ->minValue(0)
+                                    ->step(0.01)
+                                    ->helperText('Sell price for this specific unit')
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get, $context) {
+                                        // Update base unit price if this is the base unit
+                                        if ($get('is_base_unit')) {
+                                            $set('../../sell_price_per_unit', $state);
+                                        }
+                                    })
+                                    ->rules([
+                                        'required',
+                                        'numeric',
+                                        'min:0',
+                                    ]),
+                                Forms\Components\Toggle::make('is_base_unit')
+                                    ->label('Is Base Unit')
+                                    ->default(false)
+                                    ->helperText('Mark this as the base unit for conversions')
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get, $context) {
+                                        if ($state) {
+                                            // Update base unit prices when this becomes the base unit
+                                            $set('../../purchase_price_per_unit', $get('purchase_price'));
+                                            $set('../../sell_price_per_unit', $get('sell_price'));
+                                        }
+                                    }),
+                                Forms\Components\Toggle::make('is_active')
+                                    ->label('Active')
+                                    ->default(true)
+                                    ->helperText('Inactive units won\'t appear in sales'),
                             ])
-                            ->columns(2)
+                            ->columns(3)
                             ->defaultItems(1)
                             ->createItemButtonLabel('Add Unit')
                             ->reorderable(false)
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null),
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                            ->afterStateUpdated(function ($state, $set) {
+                                // Ensure only one base unit per product
+                                $baseUnitCount = collect($state)->where('is_base_unit', true)->count();
+                                if ($baseUnitCount > 1) {
+                                    // Find the first base unit and keep it, uncheck others
+                                    $firstBaseUnitIndex = collect($state)->search(function ($item) {
+                                        return $item['is_base_unit'] ?? false;
+                                    });
+                                    
+                                    if ($firstBaseUnitIndex !== false) {
+                                        foreach ($state as $index => $item) {
+                                            if ($index !== $firstBaseUnitIndex && ($item['is_base_unit'] ?? false)) {
+                                                $state[$index]['is_base_unit'] = false;
+                                            }
+                                        }
+                                        $set('productUnits', $state);
+                                    }
+                                }
+                            }),
                     ])->collapsible(),
             ]);
     }
@@ -192,28 +341,38 @@ class ProductResource extends Resource
                     ->color('warning')
                     ->placeholder('No Provider'),
                 Tables\Columns\TextColumn::make('purchase_price_per_unit')
-                    ->money('USD')
-                    ->sortable()
-                    ->label('Purchase Price'),
+                    ->label('Purchase Price')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('sell_price_per_unit')
-                    ->money('USD')
-                    ->sortable()
-                    ->label('Sell Price'),
+                    ->label('Sell Price')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('profit_margin')
+                    ->label('Profit Margin')
+                    ->formatStateUsing(function ($state, $record) {
+                        if ($record && $record->profit_margin !== null) {
+                            return FormatHelper::formatPercentage($record->profit_margin);
+                        }
+                        return 'N/A';
+                    })
+                    ->color(function ($state, $record) {
+                        return $record ? $record->profit_margin_color : 'gray';
+                    })
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('stock')
                     ->sortable()
                     ->badge()
                     ->color(fn($record) => $record->stock_status_color)
-                    ->label('Stock'),
-                // Tables\Columns\TextColumn::make('low_stock_threshold')
-                //     ->sortable()
-                //     ->label('Low Stock Threshold')
-                //     ->badge()
-                //     ->color('gray'),
-                // Tables\Columns\TextColumn::make('stock_status')
-                //     ->label('Stock Status')
-                //     ->badge()
-                //     ->color(fn($record) => $record->stock_status_color)
-                //     ->formatStateUsing(fn($record) => ucfirst($record->stock_status)),
+                    ->label('Stock')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatNumber($state, 0)),
+                Tables\Columns\TextColumn::make('units_count')
+                    ->label('Units')
+                    ->badge()
+                    ->color('info')
+                    ->formatStateUsing(function ($state, $record) {
+                        return $record ? $record->units_count : 0;
+                    }),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->sortable()
@@ -247,6 +406,9 @@ class ProductResource extends Resource
                 Tables\Filters\Filter::make('active_only')
                     ->label('Active Products Only')
                     ->query(fn (Builder $query): Builder => $query->where('is_active', true)),
+                Tables\Filters\Filter::make('with_units')
+                    ->label('Products with Units')
+                    ->query(fn (Builder $query): Builder => $query->withUnits()),
                 Tables\Filters\Filter::make('custom_threshold')
                     ->label('Custom Low Stock Threshold')
                     ->form([
@@ -291,10 +453,7 @@ class ProductResource extends Resource
                 ]),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()
-                    ->modalHeading('Create New Product')
-                    ->modalDescription('Add a new product to the system.')
-                    ->modalSubmitActionLabel('Create Product'),
+               //
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -364,5 +523,26 @@ class ProductResource extends Resource
     public static function canView(Model $record): bool
     {
         return auth()->user()->can('view products');
+    }
+
+    // Helper methods
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('is_active', true)->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Product';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Products';
     }
 }

@@ -13,9 +13,19 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->foreignId('warehouse_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('branch_id')->nullable()->constrained()->onDelete('set null');
-            $table->integer('quantity')->default(0);
+            $table->unsignedBigInteger('unit_id')->nullable(); // Will be constrained later
+            $table->decimal('quantity', 10, 4)->default(0);
+            $table->string('source_type')->nullable(); // provider, sale, return, transfer, adjustment
+            $table->unsignedBigInteger('source_id')->nullable();
+            $table->string('source_reference')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamp('last_updated_at')->nullable();
             $table->timestamps();
+            
+            // Indexes for better performance
+            $table->index(['product_id', 'warehouse_id', 'branch_id']);
+            $table->index(['source_type', 'source_id']);
+            $table->index('last_updated_at');
         });
     }
 

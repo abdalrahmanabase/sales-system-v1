@@ -10,6 +10,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use App\Helpers\FormatHelper;
 
 class SalesRelationManager extends RelationManager
 {
@@ -51,13 +52,13 @@ class SalesRelationManager extends RelationManager
                     ->label('Sale #')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('sale_date')
-                    ->date()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDate($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('final_total')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
@@ -72,7 +73,7 @@ class SalesRelationManager extends RelationManager
                     ->counts('items')
                     ->label('Items'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

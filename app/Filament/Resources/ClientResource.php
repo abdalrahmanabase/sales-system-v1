@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use App\Helpers\FormatHelper;
 
 class ClientResource extends Resource
 {
@@ -147,17 +148,17 @@ class ClientResource extends Resource
                     ->getStateUsing(function (Client $record) {
                         return $record->sales()->sum('final_total') ?: $record->sales()->sum('total_amount');
                     })
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('last_sale_date')
                     ->label('Last Purchase')
                     ->getStateUsing(function (Client $record) {
                         return $record->sales()->latest()->first()?->sale_date;
                     })
-                    ->date()
+                    ->formatStateUsing(fn ($state) => $state ? FormatHelper::formatDate($state) : 'No purchases')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

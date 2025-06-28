@@ -1,0 +1,712 @@
+/* Invoice Items Table Styles */
+.invoice-details-container {
+    background: var(--invoice-bg, #f9f9f9);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.invoice-details-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--invoice-title, #222);
+    margin-bottom: 0.5rem;
+}
+.invoice-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+@media (min-width: 768px) {
+    .invoice-details-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.invoice-details-label {
+    font-weight: 500;
+    color: var(--invoice-label, #555);
+}
+.invoice-details-value {
+    margin-left: 0.5rem;
+    color: var(--invoice-value, #111);
+    font-weight: 500;
+}
+.invoice-table-container {
+    overflow-x: auto;
+}
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--invoice-table-bg, #fff);
+}
+.invoice-table th, .invoice-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--invoice-border, #e5e7eb);
+}
+.invoice-table th {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--invoice-th, #666);
+    text-transform: uppercase;
+    background: var(--invoice-th-bg, #f3f4f6);
+}
+.invoice-table tr:hover {
+    background: var(--invoice-row-hover, #f5f5f5);
+}
+.invoice-badge {
+    display: inline-block;
+    padding: 0.2em 0.7em;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #e0f7e9;
+    color: #1a7f37;
+}
+.invoice-badge-regular {
+    background: #e3e8ff;
+    color: #2a3a8c;
+}
+.invoice-badge-bonus {
+    background: #e0f7e9;
+    color: #1a7f37;
+}
+.invoice-table tfoot td {
+    font-weight: 600;
+    background: var(--invoice-tfoot-bg, #f3f4f6);
+}
+.invoice-total-row td {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+.invoice-no-items {
+    text-align: center;
+    color: #888;
+    font-size: 1.1rem;
+    padding: 2rem 0;
+}
+
+/* Price Details Styles */
+.price-details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.price-details-card {
+    background: var(--price-card-bg, #fff);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.price-details-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--price-title, #111);
+    margin-bottom: 1rem;
+}
+.price-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+@media (min-width: 768px) {
+    .price-details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+.price-details-section-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--price-section-label, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+.price-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.price-details-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.price-details-label {
+    font-size: 0.875rem;
+    color: var(--price-label, #666);
+}
+.price-details-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--price-value, #111);
+}
+.price-details-notes {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--price-value, #111);
+    background: var(--price-notes-bg, #f3f4f6);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+.price-change-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+.price-change-card {
+    text-align: center;
+    padding: 1rem;
+    background: var(--price-change-bg, #f9fafb);
+    border-radius: 0.5rem;
+}
+.price-change-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--price-change-text, #111);
+    margin-bottom: 0.25rem;
+}
+.price-change-label {
+    font-size: 0.875rem;
+    color: var(--price-change-label, #666);
+}
+.price-increase {
+    color: #dc2626;
+}
+.price-decrease {
+    color: #16a34a;
+}
+
+/* Stock Details Styles */
+.stock-details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.stock-details-card {
+    background: var(--stock-card-bg, #fff);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.stock-details-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--stock-title, #111);
+    margin-bottom: 1rem;
+}
+.stock-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+@media (min-width: 768px) {
+    .stock-details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+.stock-details-section-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--stock-section-label, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+.stock-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.stock-details-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.stock-details-label {
+    font-size: 0.875rem;
+    color: var(--stock-label, #666);
+}
+.stock-details-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--stock-value, #111);
+}
+.stock-details-notes {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--stock-value, #111);
+    background: var(--stock-notes-bg, #f3f4f6);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+.stock-status-out {
+    color: #dc2626;
+}
+.stock-status-low {
+    color: #ca8a04;
+}
+.stock-status-normal {
+    color: #16a34a;
+}
+.stock-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+@media (min-width: 768px) {
+    .stock-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.stock-summary-card {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+.stock-summary-incoming {
+    background: #f0fdf4;
+}
+.stock-summary-outgoing {
+    background: #fef2f2;
+}
+.stock-summary-adjustment {
+    background: #fffbeb;
+}
+.stock-summary-total {
+    background: #eff6ff;
+}
+.stock-summary-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.stock-summary-incoming .stock-summary-amount {
+    color: #16a34a;
+}
+.stock-summary-outgoing .stock-summary-amount {
+    color: #dc2626;
+}
+.stock-summary-adjustment .stock-summary-amount {
+    color: #ca8a04;
+}
+.stock-summary-total .stock-summary-amount {
+    color: #2563eb;
+}
+.stock-summary-label {
+    font-size: 0.875rem;
+    color: var(--stock-summary-label, #666);
+}
+.stock-movements-recent {
+    margin-top: 1.5rem;
+}
+.stock-movements-subtitle {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--stock-title, #111);
+    margin-bottom: 0.75rem;
+}
+.stock-movements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.stock-movement-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--stock-movement-bg, #f9fafb);
+    border-radius: 0.5rem;
+}
+.stock-movement-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.stock-movement-type {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--stock-value, #111);
+}
+.stock-movement-time {
+    font-size: 0.875rem;
+    color: var(--stock-label, #666);
+}
+.stock-movement-quantity {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.stock-movement-positive {
+    color: #16a34a;
+}
+.stock-movement-negative {
+    color: #dc2626;
+}
+
+/* Stock Movements Styles */
+.stock-movements-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.stock-movements-card {
+    background: var(--stock-card-bg, #fff);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.stock-movements-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--stock-title, #111);
+    margin-bottom: 1rem;
+}
+.stock-movements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.stock-movement-card {
+    border: 1px solid var(--stock-movement-border, #e5e7eb);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+.stock-movement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.stock-movement-content {
+    flex: 1;
+}
+.stock-movement-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.stock-movement-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.stock-movement-badge-incoming {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+.stock-movement-badge-outgoing {
+    background: #fef2f2;
+    color: #dc2626;
+}
+.stock-movement-badge-adjustment {
+    background: #fffbeb;
+    color: #ca8a04;
+}
+.stock-movement-time {
+    font-size: 0.875rem;
+    color: var(--stock-label, #666);
+}
+.stock-movement-details {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+@media (min-width: 768px) {
+    .stock-movement-details {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+.stock-movement-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.stock-movement-detail-label {
+    font-size: 0.875rem;
+    color: var(--stock-label, #666);
+}
+.stock-movement-detail-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--stock-value, #111);
+}
+.stock-movement-notes {
+    margin-top: 0.75rem;
+}
+.stock-movement-notes-label {
+    font-size: 0.875rem;
+    color: var(--stock-label, #666);
+}
+.stock-movement-notes-content {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--stock-value, #111);
+    background: var(--stock-notes-bg, #f3f4f6);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+.stock-movement-quantity-display {
+    text-align: right;
+}
+.stock-movement-quantity-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.stock-movement-quantity-unit {
+    font-size: 0.75rem;
+    color: var(--stock-label, #666);
+}
+.stock-movements-summary {
+    margin-top: 1.5rem;
+    background: var(--stock-summary-bg, #f9fafb);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+.stock-movements-summary-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--stock-title, #111);
+    margin-bottom: 0.75rem;
+}
+.stock-movements-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+@media (min-width: 768px) {
+    .stock-movements-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.stock-movements-summary-item {
+    text-align: center;
+}
+.stock-movements-summary-amount {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.stock-movements-summary-incoming {
+    color: #16a34a;
+}
+.stock-movements-summary-outgoing {
+    color: #dc2626;
+}
+.stock-movements-summary-adjustment {
+    color: #ca8a04;
+}
+.stock-movements-summary-total {
+    color: #2563eb;
+}
+.stock-movements-summary-label {
+    font-size: 0.75rem;
+    color: var(--stock-summary-label, #666);
+}
+.stock-movements-empty {
+    text-align: center;
+    padding: 2rem 0;
+}
+.stock-movements-empty-title {
+    color: var(--stock-empty-title, #666);
+    font-size: 1.125rem;
+}
+.stock-movements-empty-subtitle {
+    color: var(--stock-empty-subtitle, #999);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+/* Barcode Scanner Styles */
+.barcode-scanner-container {
+    position: relative;
+}
+.barcode-scanner-input {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--barcode-border, #d1d5db);
+    border-radius: 0.5rem;
+    background: var(--barcode-bg, #fff);
+    color: var(--barcode-text, #111);
+    font-size: 0.875rem;
+    transition: all 0.15s ease-in-out;
+}
+.barcode-scanner-input:focus {
+    outline: none;
+    border-color: var(--barcode-focus-border, #3b82f6);
+    box-shadow: 0 0 0 3px var(--barcode-focus-ring, rgba(59, 130, 246, 0.1));
+}
+.barcode-scanner-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+.barcode-scanner-input-error {
+    border-color: var(--barcode-error-border, #dc2626);
+    box-shadow: 0 0 0 3px var(--barcode-error-ring, rgba(220, 38, 38, 0.1));
+}
+.barcode-scanner-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-right: 0.75rem;
+}
+.barcode-scanner-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.barcode-scanner-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.barcode-scanner-icon {
+    /* width: 1.25rem;
+    height: 1.25rem; */
+    color: var(--barcode-icon, #9ca3af);
+}
+.barcode-scanner-helper {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--barcode-helper, #666);
+}
+.barcode-scanner-status-text {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--barcode-status, #9ca3af);
+}
+
+/* Provider Sale Details Styles */
+.provider-sale-details {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: var(--provider-card-bg, #fff);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+.provider-sale-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.provider-sale-details-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.provider-sale-details-label {
+    font-weight: 600;
+    color: var(--provider-label, #374151);
+}
+.provider-sale-details-value {
+    color: var(--provider-value, #111);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --invoice-bg: #23272f;
+        --invoice-title: #fff;
+        --invoice-label: #bbb;
+        --invoice-value: #fff;
+        --invoice-table-bg: #181a20;
+        --invoice-th: #eee;
+        --invoice-th-bg: #23272f;
+        --invoice-row-hover: #23272f;
+        --invoice-border: #333;
+        --invoice-tfoot-bg: #23272f;
+        
+        --price-card-bg: #1f2937;
+        --price-title: #fff;
+        --price-section-label: #9ca3af;
+        --price-label: #9ca3af;
+        --price-value: #fff;
+        --price-notes-bg: #374151;
+        --price-change-bg: #374151;
+        --price-change-text: #fff;
+        --price-change-label: #9ca3af;
+        
+        --stock-card-bg: #1f2937;
+        --stock-title: #fff;
+        --stock-section-label: #9ca3af;
+        --stock-label: #9ca3af;
+        --stock-value: #fff;
+        --stock-notes-bg: #374151;
+        --stock-summary-label: #9ca3af;
+        --stock-movement-bg: #374151;
+        --stock-movement-border: #4b5563;
+        --stock-summary-bg: #374151;
+        --stock-empty-title: #9ca3af;
+        --stock-empty-subtitle: #6b7280;
+        
+        --barcode-border: #4b5563;
+        --barcode-bg: #374151;
+        --barcode-text: #fff;
+        --barcode-focus-border: #3b82f6;
+        --barcode-focus-ring: rgba(59, 130, 246, 0.2);
+        --barcode-error-border: #ef4444;
+        --barcode-error-ring: rgba(239, 68, 68, 0.2);
+        --barcode-icon: #6b7280;
+        --barcode-helper: #9ca3af;
+        --barcode-status: #6b7280;
+        
+        --provider-card-bg: #1f2937;
+        --provider-label: #9ca3af;
+        --provider-value: #fff;
+    }
+    
+    .invoice-badge-regular {
+        background: #2a3a8c;
+        color: #e3e8ff;
+    }
+    .invoice-badge-bonus {
+        background: #1a7f37;
+        color: #e0f7e9;
+    }
+    .invoice-no-items {
+        color: #aaa;
+    }
+    
+    .stock-summary-incoming {
+        background: #064e3b;
+    }
+    .stock-summary-outgoing {
+        background: #7f1d1d;
+    }
+    .stock-summary-adjustment {
+        background: #78350f;
+    }
+    .stock-summary-total {
+        background: #1e3a8a;
+    }
+    
+    .stock-movement-badge-incoming {
+        background: #064e3b;
+        color: #4ade80;
+    }
+    .stock-movement-badge-outgoing {
+        background: #7f1d1d;
+        color: #f87171;
+    }
+    .stock-movement-badge-adjustment {
+        background: #78350f;
+        color: #fbbf24;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

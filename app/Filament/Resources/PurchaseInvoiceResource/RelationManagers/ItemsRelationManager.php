@@ -15,6 +15,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\IconColumn;
+use App\Helpers\FormatHelper;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -66,20 +67,21 @@ class ItemsRelationManager extends RelationManager
                     ->label('Barcode')
                     ->copyable(),
                 TextColumn::make('quantity')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatQuantity($state))
                     ->sortable()
                     ->label('Quantity'),
                 TextColumn::make('purchase_price')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable()
                     ->label('Purchase Price')
                     ->description(fn ($record) => $record->is_bonus ? 'Bonus item - cost is zero' : ''),
                 TextColumn::make('sell_price')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->sortable()
                     ->label('Sell Price'),
                 TextColumn::make('total_cost')
                     ->label('Total Cost')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->getStateUsing(function ($record) {
                         return $record->total_cost;
                     })
@@ -87,7 +89,7 @@ class ItemsRelationManager extends RelationManager
                     ->description(fn ($record) => $record->is_bonus ? 'Bonus item' : ''),
                 TextColumn::make('total_purchase_value')
                     ->label('Purchase Value')
-                    ->money('USD')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
                     ->getStateUsing(function ($record) {
                         return $record->total_purchase_value;
                     })
