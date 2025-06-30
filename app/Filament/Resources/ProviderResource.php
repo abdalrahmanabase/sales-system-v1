@@ -188,6 +188,24 @@ class ProviderResource extends Resource
                                         ->searchable()
                                         ->preload()
                                         ->label('Warehouse'),
+                                    Forms\Components\Select::make('provider_sale_id')
+                                        ->label('Provider Sale')
+                                        ->options(function ($record) {
+                                            if ($record instanceof \App\Models\Provider) {
+                                                return $record->providerSales()->pluck('name', 'id')->toArray();
+                                            }
+                                            return [];
+                                        })
+                                        ->searchable()
+                                        ->preload()
+                                        ->default(function ($record) {
+                                            if ($record instanceof \App\Models\Provider) {
+                                                return $record->providerSales()->orderBy('id')->value('id');
+                                            }
+                                            return null;
+                                        })
+                                        ->required()
+                                        ->helperText('Select the provider sale who got you the invoice'),
                                 ])->columns(2),
                             Forms\Components\Section::make('Invoice Items')
                                 ->schema([
@@ -330,6 +348,7 @@ class ProviderResource extends Resource
                                     'provider_id' => $record->id,
                                     'branch_id' => $data['branch_id'] ?? auth()->user()->branch_id,
                                     'warehouse_id' => $data['warehouse_id'] ?? null,
+                                    'provider_sale_id' => $data['provider_sale_id'] ?? null,
                                     'invoice_number' => $data['invoice_number'] ?? ((\App\Models\PurchaseInvoice::max('id') ?? 0) + 1),
                                     'invoice_date' => $data['invoice_date'],
                                     'total_amount' => 0, // Will be calculated below
@@ -560,5 +579,20 @@ class ProviderResource extends Resource
         return [
             \App\Filament\Widgets\ProviderMonthlyStatsWidget::class,
         ];
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'companyName.name'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->name . ' (' . ($record->companyName->name ?? 'No Company') . ')';
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return static::getUrl('view', ['record' => $record]);
     }
 }

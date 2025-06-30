@@ -212,4 +212,19 @@ class PurchaseInvoiceResource extends Resource
     {
         return auth()->user()->can('view purchase invoices');
     }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return static::getUrl('view', ['record' => $record]);
+    }
+
+    public static function getGloballySearchResultTitle(Model $record): string
+    {
+        return 'Invoice #' . $record->invoice_number;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['invoice_number'];
+    }
 }

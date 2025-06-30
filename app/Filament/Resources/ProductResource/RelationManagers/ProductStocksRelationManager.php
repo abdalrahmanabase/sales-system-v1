@@ -135,7 +135,13 @@ class ProductStocksRelationManager extends RelationManager
                 ->formatStateUsing(function ($state, $record) {
                     if (!$record) return FormatHelper::formatText('N/A');
                     if ($record->source_type === 'provider' && $state) {
-                        return FormatHelper::formatText($state);
+                        if (preg_match('/Invoice #(\\d+)/', $state, $matches)) {
+                            $invoiceNumber = $matches[1];
+                            $invoice = \App\Models\PurchaseInvoice::where('invoice_number', $invoiceNumber)->first();
+                            if ($invoice) {
+                                return $state;
+                            }
+                        }
                     }
                     if ($record->source_type === 'sale' && $state) {
                         return FormatHelper::formatText('Sale #' . $state);
@@ -151,32 +157,20 @@ class ProductStocksRelationManager extends RelationManager
                     }
                     return $state ? FormatHelper::formatText($state) : FormatHelper::formatText('N/A');
                 })
-                ->copyable()
-                ->placeholder(FormatHelper::formatText('N/A'))
-                ->limit(30)
-                ->action(function ($record) {
-                    if (!$record) return null;
-                    if ($record->source_type === 'provider' && $record->source_reference) {
-                        // Extract invoice number from reference (e.g., "Invoice #123" -> "123")
-                        if (preg_match('/Invoice #(\d+)/', $record->source_reference, $matches)) {
-                            $invoiceId = $matches[1];
-                            $invoice = \App\Models\PurchaseInvoice::where('invoice_number', $invoiceId)->first();
+                ->url(function ($record) {
+                    if ($record && $record->source_type === 'provider' && $record->source_reference) {
+                        if (preg_match('/Invoice #(\\d+)/', $record->source_reference, $matches)) {
+                            $invoiceNumber = $matches[1];
+                            $invoice = \App\Models\PurchaseInvoice::where('invoice_number', $invoiceNumber)->first();
                             if ($invoice) {
-                                return redirect()->to(\App\Filament\Resources\PurchaseInvoiceResource::getUrl('view', ['record' => $invoice]));
+                                return \App\Filament\Resources\PurchaseInvoiceResource::getUrl('view', ['record' => $invoice->id]);
                             }
                         }
                     }
-                    // For other source types, you can add similar logic
                     return null;
                 })
-                ->icon(fn ($record) => 
-                    $record && $record->source_type === 'provider' && $record->source_reference ? 
-                    'heroicon-o-arrow-top-right-on-square' : null
-                )
-                ->tooltip(fn ($record) => 
-                    $record && $record->source_type === 'provider' && $record->source_reference ? 
-                    FormatHelper::formatText('Click to view invoice') : null
-                ),
+                ->placeholder(FormatHelper::formatText('N/A'))
+                ->limit(30),
             Tables\Columns\TextColumn::make('last_updated_at')
                 ->formatStateUsing(fn ($state) => FormatHelper::formatDate($state))
                 ->sortable()

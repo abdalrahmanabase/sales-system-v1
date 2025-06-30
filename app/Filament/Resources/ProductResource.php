@@ -190,6 +190,7 @@ class ProductResource extends Resource
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
+                                    
                                     ->label('Unit Name')
                                     ->placeholder('e.g., Piece, Box, Pack'),
                                 Forms\Components\TextInput::make('abbreviation')
@@ -282,6 +283,17 @@ class ProductResource extends Resource
                             ])
                             ->columns(3)
                             ->defaultItems(1)
+                            ->default([
+                                [
+                                    'name' => 'Piece',
+                                    'abbreviation' => 'pcs',
+                                    'conversion_factor' => 1,
+                                    'purchase_price' => null, // will be auto-calculated
+                                    'sell_price' => null,     // will be auto-calculated
+                                    'is_base_unit' => true,
+                                    'is_active' => true,
+                                ]
+                            ])
                             ->createItemButtonLabel('Add Unit')
                             ->reorderable(false)
                             ->collapsible()
@@ -399,33 +411,13 @@ class ProductResource extends Resource
                     ->placeholder('All Providers'),
                 Tables\Filters\Filter::make('low_stock')
                     ->label('Low Stock Products')
-                    ->query(fn (Builder $query): Builder => $query->lowStock()),
+                    ->query(fn (Builder $query): Builder => $query->lowStock() ->orWhere('stock', 0)),
                 Tables\Filters\Filter::make('out_of_stock')
                     ->label('Out of Stock')
                     ->query(fn (Builder $query): Builder => $query->outOfStock()),
                 Tables\Filters\Filter::make('active_only')
                     ->label('Active Products Only')
                     ->query(fn (Builder $query): Builder => $query->where('is_active', true)),
-                Tables\Filters\Filter::make('with_units')
-                    ->label('Products with Units')
-                    ->query(fn (Builder $query): Builder => $query->withUnits()),
-                Tables\Filters\Filter::make('custom_threshold')
-                    ->label('Custom Low Stock Threshold')
-                    ->form([
-                        Forms\Components\TextInput::make('threshold')
-                            ->numeric()
-                            ->label('Threshold Value')
-                            ->required()
-                            ->minValue(0)
-                            ->default(0),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        $threshold = $data['threshold'] ?? 0;
-                        if (is_numeric($threshold) && $threshold >= 0) {
-                            return $query->where('low_stock_threshold', '>', (int) $threshold);
-                        }
-                        return $query;
-                    }),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -473,9 +465,9 @@ class ProductResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ProductUnitsRelationManager::class,
             RelationManagers\ProductStocksRelationManager::class,
             RelationManagers\PriceHistoriesRelationManager::class,
+            RelationManagers\ProductUnitsRelationManager::class,
         ];
     }
 
@@ -544,5 +536,20 @@ class ProductResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return 'Products';
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'barcode', 'provider.name'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->name . ' (' . $record->barcode . ')';
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return static::getUrl('view', ['record' => $record]);
     }
 }

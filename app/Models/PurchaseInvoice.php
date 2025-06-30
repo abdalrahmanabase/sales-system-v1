@@ -11,6 +11,7 @@ class PurchaseInvoice extends Model
 
     protected $fillable = [
         'provider_id',
+        'provider_sale_id',
         'warehouse_id',
         'branch_id',
         'invoice_number',
@@ -28,6 +29,11 @@ class PurchaseInvoice extends Model
     public function provider()
     {
         return $this->belongsTo(Provider::class);
+    }
+
+    public function providerSale()
+    {
+        return $this->belongsTo(ProviderSale::class);
     }
 
     public function warehouse()

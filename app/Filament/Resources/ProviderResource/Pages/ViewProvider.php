@@ -58,6 +58,24 @@ class ViewProvider extends ViewRecord
                                 ->placeholder('0.00')
                                 ->readOnly()
                                 ->helperText('Calculated from items below'),
+                            Forms\Components\Select::make('provider_sale_id')
+                                ->label('Provider Sale')
+                                ->options(function ($record) {
+                                    if ($record instanceof \App\Models\Provider) {
+                                        return $record->providerSales()->pluck('name', 'id')->toArray();
+                                    }
+                                    return [];
+                                })
+                                ->searchable()
+                                ->preload()
+                                ->default(function ($record) {
+                                    if ($record instanceof \App\Models\Provider) {
+                                        return $record->providerSales()->orderBy('id')->value('id');
+                                    }
+                                    return null;
+                                })
+                                ->required()
+                                ->helperText('Select the provider sale who got you the invoice'),
                         ])->columns(3),
                     Forms\Components\Section::make('Location Information')
                         ->schema([
@@ -298,6 +316,7 @@ class ViewProvider extends ViewRecord
                             'provider_id' => $this->record->id,
                             'branch_id' => $data['branch_id'] ?? auth()->user()->branch_id,
                             'warehouse_id' => $data['warehouse_id'] ?? null,
+                            'provider_sale_id' => $data['provider_sale_id'] ?? null,
                             'invoice_number' => $data['invoice_number'] ?? ((PurchaseInvoice::max('id') ?? 0) + 1),
                             'invoice_date' => $data['invoice_date'],
                             'total_amount' => 0, // Will be calculated below

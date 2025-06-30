@@ -239,4 +239,15 @@ class ClientResource extends Resource
     {
         return auth()->user()->can('view clients');
     }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'phones.phone_number'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        $phone = $record->phones->first()->phone_number ?? '';
+        return $record->name . ($phone ? ' (' . $phone . ')' : '');
+    }
 }

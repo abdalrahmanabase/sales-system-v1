@@ -37,22 +37,6 @@ class Product extends Model
 
         // Create default "Piece" unit when a product is created
         static::created(function ($product) {
-            // Only create default unit if no units exist
-            if ($product->productUnits()->count() === 0) {
-                $defaultUnit = $product->productUnits()->create([
-                    'name' => 'Piece',
-                    'abbreviation' => 'pcs',
-                    'conversion_factor' => 1,
-                    'purchase_price' => $product->purchase_price_per_unit ?? 0,
-                    'sell_price' => $product->sell_price_per_unit ?? 0,
-                    'is_base_unit' => true,
-                    'is_active' => true,
-                ]);
-
-                // Update the product's base_unit_id
-                $product->update(['base_unit_id' => $defaultUnit->id]);
-            }
-            
             // Record initial creation in price history
             $product->recordPriceChange(
                 0, // No old purchase price (initial creation)

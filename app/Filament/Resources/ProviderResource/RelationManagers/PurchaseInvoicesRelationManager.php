@@ -186,6 +186,11 @@ class PurchaseInvoicesRelationManager extends RelationManager
                     ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('providerSale.name')
+                    ->label('Provider Sale')
+                    ->sortable()
+                    ->searchable()
+                    ->placeholder('N/A'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('branch_id')

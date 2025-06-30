@@ -219,4 +219,6 @@ class UserResource extends Resource
     {
         return auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->id === $record->id;
     }
+
+    
 } 

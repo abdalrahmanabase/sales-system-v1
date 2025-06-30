@@ -13,7 +13,14 @@ class ViewCategory extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
+            Actions\EditAction::make()
+                ->label('Edit Category')
+                ->icon('heroicon-o-pencil'),
+            Actions\Action::make('create_subcategory')
+                ->label('Add Subcategory')
+                ->icon('heroicon-o-plus')
+                ->url(fn () => route('filament.admin.resources.categories.create', ['parent_id' => $this->record->id]))
+                ->visible(fn () => $this->record->isParent()),
         ];
     }
 } 

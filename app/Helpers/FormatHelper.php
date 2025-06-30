@@ -9,7 +9,7 @@ class FormatHelper
     /**
      * Format number to always show 2 decimal places
      */
-    public static function formatNumber($number, $decimals = 2): string
+    public static function formatNumber($number, $decimals = 0): string
     {
         if ($number === null || $number === '') {
             return number_format(0, $decimals);

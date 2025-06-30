@@ -22,6 +22,7 @@ class CategoryResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Product Management';
     protected static ?int $navigationSort = 1;
+    protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Form $form): Form
     {
@@ -32,16 +33,36 @@ class CategoryResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255)
+                            ->unique(ignoreRecord: true)
                             ->label('Category Name')
-                            ->placeholder('e.g., Electronics, Clothing, Food'),
+                            ->placeholder('e.g., Electronics, Clothing, Food')
+                            ->helperText('Enter a descriptive name for the category'),
                         Forms\Components\Select::make('parent_id')
                             ->relationship('parent', 'name')
                             ->searchable()
                             ->preload()
                             ->label('Parent Category')
                             ->placeholder('Select parent category (optional)')
-                            ->helperText('Leave empty to create a top-level category'),
+                            ->helperText('Leave empty to create a top-level category')
+                            ->options(function () {
+                                return Category::whereNull('parent_id')
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            }),
                     ])->columns(2),
+                Forms\Components\Section::make('Category Statistics')
+                    ->schema([
+                        Forms\Components\Placeholder::make('products_count')
+                            ->label('Total Products')
+                            ->content(fn ($record) => $record ? $record->products()->count() : 0),
+                        Forms\Components\Placeholder::make('children_count')
+                            ->label('Subcategories')
+                            ->content(fn ($record) => $record ? $record->children()->count() : 0),
+                        Forms\Components\Placeholder::make('full_path')
+                            ->label('Category Path')
+                            ->content(fn ($record) => $record ? $record->full_path : ''),
+                    ])->columns(3)
+                    ->visible(fn ($record) => $record !== null),
             ]);
     }
 
@@ -52,7 +73,8 @@ class CategoryResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->label('Category Name'),
                 Tables\Columns\TextColumn::make('parent.name')
                     ->label('Parent Category')
                     ->searchable()
@@ -60,19 +82,32 @@ class CategoryResource extends Resource
                     ->badge()
                     ->color('info')
                     ->placeholder('Top Level'),
+                Tables\Columns\TextColumn::make('full_path')
+                    ->label('Full Path')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('children_count')
                     ->counts('children')
                     ->label('Subcategories')
                     ->sortable()
                     ->badge()
-                    ->color('success'),
+                    ->color('success')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatNumber($state)),
                 Tables\Columns\TextColumn::make('products_count')
                     ->counts('products')
                     ->label('Products')
                     ->sortable()
                     ->badge()
-                    ->color('warning'),
+                    ->color('warning')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatNumber($state)),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created')
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Updated')
                     ->formatStateUsing(fn ($state) => FormatHelper::formatDateTime($state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -101,8 +136,12 @@ class CategoryResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Category')
+                        ->modalDescription('Category details and information'),
+                    Tables\Actions\EditAction::make()
+                        ->modalHeading('Edit Category')
+                        ->modalDescription('Update category information'),
                     Tables\Actions\Action::make('view_subcategories')
                         ->label('View Subcategories')
                         ->icon('heroicon-o-chevron-down')
@@ -134,7 +173,8 @@ class CategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // We can add relation managers for products and subcategories
+            RelationManagers\ChildrenRelationManager::class,
+            RelationManagers\ProductsRelationManager::class,
         ];
     }
 
@@ -153,6 +193,16 @@ class CategoryResource extends Resource
         return parent::getEloquentQuery()
             ->with(['parent', 'children', 'products'])
             ->withCount(['children', 'products']);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
     }
 
     // Authorization
@@ -183,5 +233,20 @@ class CategoryResource extends Resource
     public static function canView(Model $record): bool
     {
         return auth()->user()->can('view categories');
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return static::getUrl('view', ['record' => $record]);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->name;
     }
 }
