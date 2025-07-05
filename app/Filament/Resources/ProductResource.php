@@ -484,8 +484,33 @@ class ProductResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['category', 'subcategory', 'provider', 'productUnits', 'productStocks'])
-            ->withCount(['productUnits', 'productStocks']);
+            ->with([
+                'category:id,name,parent_id',
+                'subcategory:id,name,parent_id',
+                'provider:id,name,company_name_id',
+                'provider.companyName:id,name',
+                'productUnits' => function ($query) {
+                    $query->select('id', 'product_id', 'name', 'abbreviation', 'is_base_unit', 'is_active')
+                          ->where('is_active', true);
+                },
+                'productStocks' => function ($query) {
+                    $query->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity')
+                          ->where('quantity', '>', 0);
+                }
+            ])
+            ->withCount([
+                'productUnits' => function ($query) {
+                    $query->where('is_active', true);
+                },
+                'productStocks' => function ($query) {
+                    $query->where('quantity', '>', 0);
+                }
+            ])
+            ->select([
+                'id', 'name', 'barcode', 'category_id', 'subcategory_id', 'provider_id',
+                'purchase_price_per_unit', 'sell_price_per_unit', 'stock',
+                'low_stock_threshold', 'is_active', 'created_at', 'updated_at'
+            ]);
     }
 
     // Authorization

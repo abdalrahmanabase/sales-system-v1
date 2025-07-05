@@ -93,25 +93,19 @@ class ProviderResource extends Resource
                     ->sortable()
                     ->badge()
                     ->color('warning'),
-                Tables\Columns\TextColumn::make('total_purchases')
+                Tables\Columns\TextColumn::make('purchase_invoices_sum_total_amount')
                     ->label('Total Purchases')
-                    ->getStateUsing(function (Provider $record) {
-                        return $record->purchaseInvoices()->sum('total_amount');
-                    })
-                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state ?? 0))
                     ->sortable(),
-                Tables\Columns\TextColumn::make('total_payments')
+                Tables\Columns\TextColumn::make('payments_sum_amount')
                     ->label('Total Payments')
-                    ->getStateUsing(function (Provider $record) {
-                        return $record->payments()->sum('amount');
-                    })
-                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
+                    ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state ?? 0))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('balance')
                     ->label('Balance')
                     ->getStateUsing(function (Provider $record) {
-                        $totalPurchases = $record->purchaseInvoices()->sum('total_amount');
-                        $totalPayments = $record->payments()->sum('amount');
+                        $totalPurchases = $record->purchase_invoices_sum_total_amount ?? 0;
+                        $totalPayments = $record->payments_sum_amount ?? 0;
                         return $totalPurchases - $totalPayments;
                     })
                     ->formatStateUsing(fn ($state) => FormatHelper::formatCurrency($state))
@@ -541,8 +535,24 @@ class ProviderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['companyName', 'products', 'purchaseInvoices', 'payments'])
-            ->withCount(['products', 'purchaseInvoices']);
+            ->with([
+                'companyName:id,name',
+                'products' => function ($query) {
+                    $query->select('id', 'provider_id', 'name', 'is_active')
+                          ->where('is_active', true);
+                }
+            ])
+            ->withCount([
+                'products' => function ($query) {
+                    $query->where('is_active', true);
+                },
+                'purchaseInvoices'
+            ])
+            ->withSum('purchaseInvoices', 'total_amount')
+            ->withSum('payments', 'amount')
+            ->select([
+                'id', 'name', 'company_name_id', 'notes', 'created_at', 'updated_at'
+            ]);
     }
 
     // Authorization
