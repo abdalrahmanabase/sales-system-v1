@@ -52,10 +52,7 @@ class Employee extends Model
         'bank_routing_number',
         'tax_id',
         'tax_rate',
-        'annual_leave_days',
-        'sick_leave_days',
-        'used_annual_leave',
-        'used_sick_leave',
+        'benefits',
         'profile_picture',
         'notes',
         'is_active',
@@ -105,10 +102,7 @@ class Employee extends Model
         return $this->hasMany(EmployeeSalary::class);
     }
 
-    public function leaveRequests(): HasMany
-    {
-        return $this->hasMany(EmployeeLeaveRequest::class);
-    }
+
 
     public function loanPayments(): HasMany
     {
@@ -138,15 +132,7 @@ class Employee extends Model
         return $this->hire_date ? Carbon::parse($this->hire_date)->diffInYears(Carbon::now()) : null;
     }
 
-    public function getRemainingAnnualLeaveAttribute(): int
-    {
-        return $this->annual_leave_days - $this->used_annual_leave;
-    }
 
-    public function getRemainingSickLeaveAttribute(): int
-    {
-        return $this->sick_leave_days - $this->used_sick_leave;
-    }
 
     public function getTotalActiveLoansAttribute(): float
     {
@@ -235,5 +221,78 @@ class Employee extends Model
             ->whereYear('attendance_date', $year)
             ->whereMonth('attendance_date', $month)
             ->sum('overtime_hours');
+    }
+
+    // Resignation/Quit functionality
+    public function resign(string $reason = null, User $processedBy = null): bool
+    {
+        $this->employment_status = 'resigned';
+        $this->termination_date = Carbon::now();
+        $this->termination_reason = $reason ?? 'Employee resignation';
+        $this->is_active = false;
+        
+        // Cancel any pending loans
+        $this->loans()->where('status', 'pending')->update([
+            'status' => 'cancelled',
+            'approval_notes' => 'Cancelled due to employee resignation'
+        ]);
+        
+        $saved = $this->save();
+        
+        if ($saved && $processedBy) {
+            // Log the resignation
+            activity()
+                ->causedBy($processedBy)
+                ->performedOn($this)
+                ->log("Employee resigned: {$reason}");
+        }
+        
+        return $saved;
+    }
+
+    public function terminate(string $reason, User $processedBy = null): bool
+    {
+        $this->employment_status = 'terminated';
+        $this->termination_date = Carbon::now();
+        $this->termination_reason = $reason;
+        $this->is_active = false;
+        
+        // Cancel any pending loans
+        $this->loans()->where('status', 'pending')->update([
+            'status' => 'cancelled',
+            'approval_notes' => 'Cancelled due to employee termination'
+        ]);
+        
+        $saved = $this->save();
+        
+        if ($saved && $processedBy) {
+            // Log the termination
+            activity()
+                ->causedBy($processedBy)
+                ->performedOn($this)
+                ->log("Employee terminated: {$reason}");
+        }
+        
+        return $saved;
+    }
+
+    public function reactivate(User $processedBy = null): bool
+    {
+        $this->employment_status = 'active';
+        $this->termination_date = null;
+        $this->termination_reason = null;
+        $this->is_active = true;
+        
+        $saved = $this->save();
+        
+        if ($saved && $processedBy) {
+            // Log the reactivation
+            activity()
+                ->causedBy($processedBy)
+                ->performedOn($this)
+                ->log("Employee reactivated");
+        }
+        
+        return $saved;
     }
 }

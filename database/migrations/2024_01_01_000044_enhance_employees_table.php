@@ -51,14 +51,11 @@ return new class extends Migration
             $table->string('tax_id')->nullable()->after('bank_routing_number');
             $table->decimal('tax_rate', 5, 2)->default(0)->after('tax_id');
             
-            // Benefits and Leave
-            $table->integer('annual_leave_days')->default(21)->after('tax_rate');
-            $table->integer('sick_leave_days')->default(10)->after('annual_leave_days');
-            $table->integer('used_annual_leave')->default(0)->after('sick_leave_days');
-            $table->integer('used_sick_leave')->default(0)->after('used_annual_leave');
+            // Benefits
+            $table->text('benefits')->nullable()->after('tax_rate');
             
             // Additional Information
-            $table->string('profile_picture')->nullable()->after('used_sick_leave');
+            $table->string('profile_picture')->nullable()->after('benefits');
             $table->text('notes')->nullable()->after('profile_picture');
             $table->boolean('is_active')->default(true)->after('notes');
         });
@@ -74,8 +71,7 @@ return new class extends Migration
                 'postal_code', 'country', 'employee_type', 'department', 'hourly_rate',
                 'working_hours_per_week', 'probation_end_date', 'contract_end_date', 'employment_status',
                 'termination_date', 'termination_reason', 'bank_account_number', 'bank_name',
-                'bank_routing_number', 'tax_id', 'tax_rate', 'annual_leave_days', 'sick_leave_days',
-                'used_annual_leave', 'used_sick_leave', 'profile_picture', 'notes', 'is_active'
+                'bank_routing_number', 'tax_id', 'tax_rate', 'benefits', 'profile_picture', 'notes', 'is_active'
             ]);
         });
     }

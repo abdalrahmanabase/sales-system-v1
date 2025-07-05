@@ -43,13 +43,12 @@ This comprehensive employee management system provides a complete solution for m
 - **Multi-payment Methods**: Cash, bank transfer, check, mobile money
 - **Salary History**: Complete salary payment history
 
-### 5. Leave Management
-- **Multiple Leave Types**: Annual, sick, maternity, paternity, emergency, unpaid, study, compassionate
-- **Leave Balance Tracking**: Automatic leave balance calculation
-- **Approval Workflow**: Request → Approval/Rejection → Processing
-- **Leave Conflict Detection**: Prevent overlapping leave requests
-- **Business Days Calculation**: Automatic calculation of working days
-- **Attachment Support**: Support for medical certificates and documents
+### 5. Employee Management (with Resignation/Termination)
+- **Quit/Resignation Button**: Simple resignation process with reason tracking
+- **Termination Management**: Proper termination workflow with documentation
+- **Employee Reactivation**: Ability to reactivate terminated/resigned employees
+- **Status Tracking**: Complete employment status history
+- **Automated Loan Cancellation**: Automatically cancel pending loans on resignation/termination
 
 ## Database Structure
 
@@ -75,8 +74,7 @@ This comprehensive employee management system provides a complete solution for m
 
 ### Attendance Management Tables
 ```sql
-- employee_attendance: Enhanced attendance with hours tracking
-- employee_leave_requests: Leave request management
+- employee_attendance: Basic attendance tracking (integrated with fingerprint devices)
 ```
 
 ## Model Relationships
@@ -87,7 +85,7 @@ This comprehensive employee management system provides a complete solution for m
 hasMany(EmployeeAttendance::class)
 hasMany(EmployeeLoan::class)
 hasMany(EmployeeSalary::class)
-hasMany(EmployeeLeaveRequest::class)
+
 hasMany(EmployeeLoanPayment::class)
 belongsTo(Branch::class)
 belongsTo(User::class)
@@ -135,16 +133,7 @@ getProductivityRate()
 getAttendanceScore()
 ```
 
-### EmployeeLeaveRequest Model
-```php
-// Key Methods
-approve()
-reject()
-cancel()
-checkLeaveBalance()
-calculateBusinessDays()
-hasConflictingLeave()
-```
+
 
 ## Usage Examples
 
@@ -164,8 +153,6 @@ $employee = Employee::create([
     'hire_date' => '2024-01-01',
     'branch_id' => 1,
     'tax_rate' => 15.00,
-    'annual_leave_days' => 21,
-    'sick_leave_days' => 10,
 ]);
 ```
 
@@ -228,18 +215,16 @@ $salary->markAsPaid(auth()->user());
 $payslip = $salary->generatePayslip();
 ```
 
-### Leave Request
+### Employee Resignation
 ```php
-$leaveRequest = EmployeeLeaveRequest::create([
-    'employee_id' => $employee->id,
-    'leave_type' => 'annual',
-    'start_date' => '2024-03-01',
-    'end_date' => '2024-03-05',
-    'reason' => 'Family vacation',
-]);
+// Resign an employee
+$employee->resign('Personal reasons - relocating to another city', auth()->user());
 
-// Approve leave
-$leaveRequest->approve(auth()->user(), 'Approved - adequate coverage arranged');
+// Terminate an employee
+$employee->terminate('Performance issues after probation period', auth()->user());
+
+// Reactivate an employee
+$employee->reactivate(auth()->user());
 ```
 
 ## Business Logic Features
@@ -255,11 +240,11 @@ $leaveRequest->approve(auth()->user(), 'Approved - adequate coverage arranged');
 - Deductions for early departure (up to 20 points)
 - Zero score for absence
 
-### Leave Balance Management
-- Automatic balance checking before approval
-- Balance deduction upon approval
-- Balance refund upon cancellation
-- Separate tracking for different leave types
+### Resignation/Termination Management
+- Simple resignation process with reason documentation
+- Automatic loan cancellation for pending loans
+- Employment status tracking with dates
+- Reactivation capability for rehires
 
 ### Salary Calculations
 - Automatic tax calculations based on employee tax rate
@@ -320,6 +305,42 @@ $leaveRequest->approve(auth()->user(), 'Approved - adequate coverage arranged');
 - Leave balance reports
 - Overtime analysis
 
+## Filament Admin Panel
+
+The system includes comprehensive Filament resources for easy management:
+
+### Employee Resource (`EmployeeResource`)
+- **Complete employee management** with tabbed forms for personal, contact, employment, and compensation information
+- **Resign/Terminate/Reactivate actions** directly from the table
+- **Comprehensive employee profiles** with all global standard fields
+- **Relation managers** for attendance, loans, and salary management
+- **Advanced filtering** by status, branch, department, and employee type
+- **Employee status tabs** (All, Active, Inactive, Resigned, Terminated)
+
+### Employee Loan Resource (`EmployeeLoanResource`)
+- **Full loan lifecycle management** from application to completion
+- **Loan approval workflow** with approval actions
+- **Payment schedule generation** and tracking
+- **Loan status management** (Pending → Approved → Active → Completed)
+- **Advanced filtering** by status, type, branch, and overdue loans
+- **Loan eligibility checking** and validation
+
+### Employee Salary Resource (`EmployeeSalaryResource`)
+- **Complete payroll management** with earnings and deductions
+- **Payment processing** with partial payment support
+- **Payslip generation** and download functionality
+- **Advanced filtering** by pay period, status, and payment method
+- **Bulk payment processing** for multiple salary records
+- **Automatic calculations** for taxes, overtime, and deductions
+
+### Key Filament Features
+- **Tabbed interfaces** for complex forms
+- **Action buttons** for workflow management (Approve, Activate, Pay, etc.)
+- **Relation managers** for nested data management
+- **Advanced filtering** and search capabilities
+- **Bulk actions** for efficient data processing
+- **Responsive design** for mobile and desktop usage
+
 ## Installation & Setup
 
 ### Run Migrations
@@ -366,11 +387,10 @@ EmployeeLoan::factory()->create(['employee_id' => $employee->id]);
 - `POST /api/salaries/{id}/pay` - Mark as paid
 - `GET /api/salaries/{id}/payslip` - Generate payslip
 
-### Leave Management
-- `GET /api/leave-requests` - List leave requests
-- `POST /api/leave-requests` - Create leave request
-- `POST /api/leave-requests/{id}/approve` - Approve leave
-- `POST /api/leave-requests/{id}/reject` - Reject leave
+### Employee Status Management
+- `POST /api/employees/{id}/resign` - Resign employee
+- `POST /api/employees/{id}/terminate` - Terminate employee
+- `POST /api/employees/{id}/reactivate` - Reactivate employee
 
 ## Best Practices
 
@@ -392,4 +412,4 @@ EmployeeLoan::factory()->create(['employee_id' => $employee->id]);
 - Implement proper authorization
 - Regular security audits
 
-This employee management system provides a comprehensive solution that meets global HR standards while maintaining flexibility for different business needs.
+This employee management system provides a comprehensive solution that meets global HR standards while maintaining flexibility for different business needs. The system integrates seamlessly with existing fingerprint attendance systems and provides a modern Filament-based admin interface for efficient HR management.
