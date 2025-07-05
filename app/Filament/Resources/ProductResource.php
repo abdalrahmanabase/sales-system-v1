@@ -540,7 +540,7 @@ class ProductResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'barcode', 'provider.name'];
+        return ['name', 'barcode'];
     }
 
     public static function getGlobalSearchResultTitle(Model $record): string

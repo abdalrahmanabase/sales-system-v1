@@ -87,7 +87,7 @@ class FormatHelper
      */
     public static function formatQuantity($quantity): string
     {
-        return self::formatNumber($quantity, 2);
+        return self::formatNumber($quantity, 0);
     }
 
     /**

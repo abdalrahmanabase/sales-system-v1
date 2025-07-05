@@ -20,21 +20,29 @@ class ProviderMonthlyStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         try {
-            // Simple stats for testing
+            // Only show stats for THIS MONTH
+            $now = now();
+            $start = $now->copy()->startOfMonth();
+            $end = $now->copy()->endOfMonth();
+
             $totalProviders = Provider::count();
-            $totalPayments = ProviderPayment::sum('amount') ?? 0;
-            $totalPurchases = PurchaseInvoice::sum('total_amount') ?? 0;
+            $totalPayments = ProviderPayment::whereBetween('payment_date', [$start, $end])->sum('amount') ?? 0;
+            $totalPurchases = PurchaseInvoice::whereBetween('invoice_date', [$start, $end])->sum('total_amount') ?? 0;
+            $totalDebt = $totalPurchases - $totalPayments;
 
             return [
                 Stat::make('Total Providers', $totalProviders)
-                    ->description('Number of providers')
+                    ->icon('heroicon-o-users')
+                    ->description('Providers this month')
                     ->color('info'),
-                Stat::make('Total Payments', '$' . number_format($totalPayments, 2))
-                    ->description('All time payments')
-                    ->color('success'),
                 Stat::make('Total Purchases', '$' . number_format($totalPurchases, 2))
-                    ->description('All time purchases')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->description('Purchases this month')
                     ->color('warning'),
+                Stat::make('Total Debt', '$' . number_format($totalDebt, 2))
+                    ->icon('heroicon-o-currency-dollar')
+                    ->description('Debt this month')
+                    ->color($totalDebt > 0 ? 'danger' : 'success'),
             ];
         } catch (\Exception $e) {
             // Return error stats if there's an issue
